@@ -50,9 +50,14 @@ export function JsPlayground() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-gray-300">
-      <h1 className="text-md font-bold py-2 px-3 bg-gray-800">
-        JavaScript Playground
-      </h1>
+      <header className="py-2 px-3 bg-gray-800 flex justify-between items-center">
+        <h1 className="text-md font-bold">
+          JSPlayground
+        </h1>
+        <a href="https://github.com/anandarizki/jsplayground" target="_blank" className="text-xs underline">
+          GitHub
+        </a>
+      </header>
       <div className="flex-1 flex overflow-hidden">
         <div className="w-1/2 h-full overflow-auto p-4">
           <JsEditor code={code} setCode={setCode} />
@@ -64,7 +69,7 @@ export function JsPlayground() {
         </div>
       </div>
       <footer className="p-2 bg-gray-800 text-center text-xs text-gray-500">
-        © 2024 JavaScript Playground by{" "}
+        © 2024 JSPlayground by{" "}
         <a href="https://rizki.id" target="_blank">
           Ananda Rizki
         </a>

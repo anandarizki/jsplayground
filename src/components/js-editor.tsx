@@ -26,8 +26,6 @@ export default function JsEditor({
       }}
       textareaClassName="focus:outline-none"
       className="h-full"
-      placeholder="// Write your JavaScript code here
-console.log('Hello, World!');"
     />
   );
 }

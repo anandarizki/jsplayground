@@ -12,10 +12,4 @@ JSPlayground is a simple, single-file JavaScript playground that allows you to w
 
 Try out JSPlayground at: [jsplayground.rizki.id](https://jsplayground.rizki.id)
 
-## Getting Started
-
-1. Visit [jsplayground.rizki.id](https://jsplayground.rizki.id)
-2. Write your JavaScript code in the editor
-3. See the output instantly in the console
-
 Happy coding!

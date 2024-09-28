@@ -11,21 +11,24 @@ export default function JsEditor({
   setCode: (code: string) => void;
 }) {
   return (
-    <Editor
-      value={code}
-      onValueChange={setCode}
-      highlight={(code) =>
-        highlight(code || " ", languages.javascript, "javascript")
-      }
-      padding={10}
-      style={{
-        fontFamily: '"Fira code", "Fira Mono", monospace',
-        fontSize: 14,
-        backgroundColor: "transparent",
-        height: "100%",
-      }}
-      textareaClassName="focus:outline-none"
-      className="h-full"
-    />
+    <div style={{ display: "flex", flexDirection: "row" }}>
+      
+      <Editor
+        value={code}
+        onValueChange={setCode}
+        highlight={(code) =>
+          highlight(code || " ", languages.javascript, "javascript")
+        }
+        padding={20}
+        style={{
+          fontFamily: '"Fira code", "Fira Mono", monospace',
+          fontSize: 13,
+          height: "100%", // Ensure it takes full height of the parent
+          overflow: "auto", // Ensure overflow is set for scrolling
+        }}
+        textareaClassName="focus:outline-none"
+        className="h-full" // Ensure the editor takes full height
+      />
+    </div>
   );
 }

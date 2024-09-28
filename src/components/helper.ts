@@ -8,21 +8,23 @@ export const debounce = (func: Function, delay: number) => {
   return debouncedFunc;
 };
 
-export const saveToStorage = (key: string, value: string) => {
+const keyStorage = 'jsPlaygroundCode';
+export const saveToStorage = (value: string) => {
   try {
-    localStorage.setItem(key, value);
+    localStorage.setItem(keyStorage, value);
   } catch (e) {
     console.error(e);
   }
 };
 
-export const loadFromStorage = (key: string): string => {
+export const loadFromStorage = (): string => {
+  const placeHolder = "//Write you JS code here\nconsole.log('Hello world!')"
   try {
-    const value = localStorage.getItem(key);
+    const value = localStorage.getItem(keyStorage);
     if (value) return value;
-    return "";
+    return placeHolder;
   } catch (e) {
     console.error(e);
-    return "";
+    return placeHolder;
   }
 };

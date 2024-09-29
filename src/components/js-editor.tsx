@@ -11,8 +11,7 @@ export default function JsEditor({
   setCode: (code: string) => void;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "row" }}>
-      
+    <div className="h-full overflow-auto flex flex-row">
       <Editor
         value={code}
         onValueChange={setCode}
@@ -27,7 +26,7 @@ export default function JsEditor({
           overflow: "auto", // Ensure overflow is set for scrolling
         }}
         textareaClassName="focus:outline-none"
-        className="h-full" // Ensure the editor takes full height
+        className="h-full w-full" // Ensure the editor takes full height
       />
     </div>
   );

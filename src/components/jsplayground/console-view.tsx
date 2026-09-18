@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import type { Entry, Printed, Token, Tone } from "./types";
+import type { Entry, Member, Printed, Token, Tone } from "./types";
 
 /** Tones are abstract in the worker so the mapping lives here, once, next to the
  *  editor's palette. Dark follows the repo's `.dark` on a `group` ancestor. */
@@ -39,41 +39,52 @@ function Tokens({ tokens }: { tokens: Token[] }) {
   );
 }
 
+/** Chevron column: the glyph plus its gap. Rows without a chevron are padded by it so
+ *  every key in a level starts at the same column. */
+const GUTTER = "pl-[14px]";
+
+/** One level of nesting. The guide line runs under the chevron that opened it. */
+const BRANCH = "ml-[6px] border-l border-zinc-200 pl-3 group-[.dark]:border-zinc-800";
+
 /**
- * A container, shut until asked. Open state is deliberately local rather than lifted:
- * entries are keyed by id, so React keeps each toggle's state where it belongs for as
- * long as the row lives, and a new run starts everything shut — which is what you want,
- * since the next run's objects are not the ones you opened.
+ * A container and, when open, its members.
+ *
+ * The whole thing is a block, and the members are a sibling of the summary rather than
+ * a continuation of it. That is the difference between a level indenting by a fixed
+ * step and indenting by however long the key that introduced it happened to be — which
+ * puts every chevron in a level on the same column and makes the tree scannable.
+ *
+ * Open state is deliberately local rather than lifted: entries are keyed by id, so React
+ * keeps each toggle's state where it belongs for as long as the row lives, and a new run
+ * starts everything shut — the next run's objects are not the ones you opened.
  */
-function Expandable({ node }: { node: Extract<Printed, { n: "c" }> }) {
+function Branch({ node, label }: { node: Extract<Printed, { n: "c" }>; label?: Token[] }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <span className="inline-block max-w-full align-top">
+    <span className="block">
       <button
         onClick={() => setOpen((was) => !was)}
         aria-expanded={open}
-        className="-mx-0.5 inline-flex max-w-full items-start gap-0.5 rounded px-0.5 text-left transition hover:bg-zinc-200/70 group-[.dark]:hover:bg-zinc-800/70"
+        className="-mx-0.5 flex w-full items-start gap-0.5 rounded px-0.5 text-left transition hover:bg-zinc-200/70 group-[.dark]:hover:bg-zinc-800/70"
       >
         <ChevronRight
           size={12}
           className={`mt-[3px] shrink-0 text-zinc-400 transition-transform group-[.dark]:text-zinc-500 ${open ? "rotate-90" : ""}`}
         />
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
+          {label ? <Tokens tokens={label} /> : null}
           <Tokens tokens={node.preview} />
         </span>
       </button>
 
       {open ? (
-        <span className="mt-0.5 mb-1 ml-[5px] block border-l border-zinc-200 pl-3 group-[.dark]:border-zinc-800">
-          {node.members.map((entry, i) => (
-            <span key={i} className="block">
-              <Tokens tokens={entry.key} />
-              <Node node={entry.value} />
-            </span>
+        <span className={`mt-0.5 mb-1 block ${BRANCH}`}>
+          {node.members.map((member, i) => (
+            <MemberRow key={i} member={member} />
           ))}
           {node.hidden > 0 ? (
-            <span className="block text-zinc-400 group-[.dark]:text-zinc-500">… {node.hidden} more</span>
+            <span className={`block ${GUTTER} text-zinc-400 group-[.dark]:text-zinc-500`}>… {node.hidden} more</span>
           ) : null}
         </span>
       ) : null}
@@ -81,8 +92,25 @@ function Expandable({ node }: { node: Extract<Printed, { n: "c" }> }) {
   );
 }
 
+function MemberRow({ member }: { member: Member }) {
+  if (member.value.n === "c") return <Branch node={member.value} label={member.key} />;
+  return (
+    <span className={`block ${GUTTER}`}>
+      <Tokens tokens={member.key} />
+      <Tokens tokens={member.value.tokens} />
+    </span>
+  );
+}
+
+/** A console argument. Expandable ones are inline-block so `console.log("x", obj)` keeps
+ *  its summary on one line, and the tree grows downward from there. */
 function Node({ node }: { node: Printed }) {
-  return node.n === "v" ? <Tokens tokens={node.tokens} /> : <Expandable node={node} />;
+  if (node.n === "v") return <Tokens tokens={node.tokens} />;
+  return (
+    <span className="inline-block max-w-full align-top">
+      <Branch node={node} />
+    </span>
+  );
 }
 
 type Props = {

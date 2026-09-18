@@ -40,8 +40,10 @@ Every control is in the left rail, which is why the panes carry no chrome of the
   The exception is `{}` and `[]`, which stay as they are: a triangle that opens onto
   nothing is a broken promise. The tree is serialised up front, because the worker is
   terminated once the run settles and there is nobody left to ask for the next level;
-  `MAX_DEPTH`, `MAX_ITEMS` and `MAX_NODES` are what bound that. Open state lives in the
-  row that owns it, so a new run starts everything shut.
+  `MAX_DEPTH`, `MAX_ITEMS` and `MAX_NODES` are what bound that. A level's members are a
+  sibling of its summary rather than a continuation of it, which is what makes the indent
+  a fixed step instead of the width of the key that introduced it. Open state lives in
+  the row that owns it, so a new run starts everything shut.
 - `completion.ts` — property and global completion. `scopeCompletionSource` walks a
   real object, and the easy move is to hand it `globalThis` — which would offer
   `document`, `window` and `localStorage`, none of which exist in a worker. It gets a

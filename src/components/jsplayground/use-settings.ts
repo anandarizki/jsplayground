@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { MAX_TIMEOUT_MS, MIN_TIMEOUT_MS, RUN_TIMEOUT_MS } from "./constants";
-import { APP_THEMES, CODE_THEMES } from "./themes";
+import { APP_THEMES, CODE_THEMES, appTheme, matchCode } from "./themes";
 import type { RunMode } from "./types";
 
 export type Orientation = "rows" | "columns";
@@ -121,7 +121,10 @@ export function useSettings(): {
     } catch {
       // Private windows and blocked storage both throw on access, not on write.
     }
-    setSettings({ ...DEFAULTS, ...stored });
+    // A stored pair can be mismatched — hand-edited, or carried over from a shape that
+    // did not have the constraint — so the invariant is restored on the way in.
+    const merged = { ...DEFAULTS, ...stored };
+    setSettings({ ...merged, code: matchCode(merged.code, appTheme(merged.theme).dark) });
     loaded.current = true;
     setReady(true);
   }, []);
@@ -135,7 +138,20 @@ export function useSettings(): {
     }
   }, [settings]);
 
-  const update = useCallback((patch: Partial<Settings>) => setSettings((previous) => ({ ...previous, ...patch })), []);
+  const update = useCallback(
+    (patch: Partial<Settings>) =>
+      setSettings((previous) => {
+        const next = { ...previous, ...patch };
+        // Changing the app theme carries the code theme with it, unless the caller said
+        // which one it wanted. Keeping this here rather than in the dialog means no
+        // caller can leave the two out of step.
+        if (patch.theme !== undefined && patch.code === undefined) {
+          next.code = matchCode(next.code, appTheme(next.theme).dark);
+        }
+        return next;
+      }),
+    [],
+  );
 
   return { settings, update, ready };
 }

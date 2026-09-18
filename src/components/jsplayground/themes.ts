@@ -6,9 +6,10 @@
  * output both come from it, which is what keeps a string the same green whether you are
  * writing it or reading what it printed.
  *
- * Splitting them is what makes an arbitrary pairing safe. A light code theme on a dark
- * app is a light code surface inside dark chrome, not dark text on a dark background,
- * because the panes carry their own background rather than borrowing the app's.
+ * They are separate values but not free ones: only code themes of the app theme's own
+ * brightness are offered, because a light code surface under dark chrome is legible and
+ * still looks like a mistake. Changing the app theme carries the code theme to the same
+ * slot in the other list, which is what makes that move reversible.
  */
 
 export type AppTheme = {
@@ -396,6 +397,29 @@ export const CODE_THEMES: CodeTheme[] = [
 
 export const appTheme = (id: string): AppTheme => APP_THEMES.find((t) => t.id === id) ?? APP_THEMES[3];
 export const codeTheme = (id: string): CodeTheme => CODE_THEMES.find((t) => t.id === id) ?? CODE_THEMES[5];
+
+/** The two halves of `CODE_THEMES`, which are the same length and in the same order. */
+const LIGHT_CODE = CODE_THEMES.filter((t) => !t.dark);
+const DARK_CODE = CODE_THEMES.filter((t) => t.dark);
+
+/** Only the code themes that belong under chrome of this brightness. Pairing a light
+ *  code surface with dark chrome is legible but looks like a mistake, so it is not
+ *  offered — the two lists are the choice, and the app theme picks which one. */
+export const codeThemesFor = (dark: boolean): CodeTheme[] => (dark ? DARK_CODE : LIGHT_CODE);
+
+/**
+ * The same slot in the other list.
+ *
+ * Switching the app between light and dark has to move the code theme with it, and
+ * moving it by position rather than to a fixed default is what makes the move
+ * reversible: going dark and back again returns the theme you started on.
+ */
+export function matchCode(id: string, dark: boolean): string {
+  const target = codeThemesFor(dark);
+  if (target.some((t) => t.id === id)) return id;
+  const index = codeThemesFor(!dark).findIndex((t) => t.id === id);
+  return (index >= 0 ? (target[index] ?? target[0]) : target[0]).id;
+}
 
 /**
  * Both palettes as custom properties on one element.

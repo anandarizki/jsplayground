@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 
 import { MAX_TIMEOUT_MS, MIN_TIMEOUT_MS } from "./constants";
 import { Dialog } from "./dialog";
-import { APP_THEMES, CODE_THEMES, codeTheme } from "./themes";
+import { APP_THEMES, appTheme, codeTheme, codeThemesFor } from "./themes";
 import type { Settings } from "./use-settings";
 
 const TABS = ["Theme", "Layout", "Console", "Running"] as const;
@@ -42,8 +42,15 @@ function Choice<T extends string>({
   );
 }
 
-/** A named palette, shown as the colours it actually is. A theme list that describes its
- *  entries in words is a list you have to try one at a time. */
+/**
+ * A named palette, shown as the colours it actually is. A theme list that describes its
+ * entries in words is a list you have to try one at a time.
+ *
+ * The tile itself takes no colour from the theme it offers — only the dots do. Painting
+ * each tile its own background turned the list into six mismatched rectangles and left
+ * every label needing a contrast calculation to stay readable; the dots carry the same
+ * information without either problem, and the first of them is the background.
+ */
 function Swatches({
   value,
   onChange,
@@ -51,7 +58,7 @@ function Swatches({
 }: {
   value: string;
   onChange: (next: string) => void;
-  options: { id: string; name: string; swatch: string[]; bg: string; border: string; text: string }[];
+  options: { id: string; name: string; dots: string[] }[];
 }) {
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -62,17 +69,21 @@ function Swatches({
             key={option.id}
             onClick={() => onChange(option.id)}
             aria-pressed={picked}
-            style={{ backgroundColor: option.bg, borderColor: picked ? "var(--jp-accent)" : option.border }}
             className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition ${
-              picked ? "ring-1 ring-[var(--jp-accent)]" : ""
+              picked
+                ? "border-[var(--jp-accent)] bg-[var(--jp-hover)]"
+                : "border-[var(--jp-border)] hover:bg-[var(--jp-hover)]"
             }`}
           >
-            <span style={{ color: option.text }} className="truncate text-[13px]">
-              {option.name}
-            </span>
+            <span className="truncate text-[13px] text-[var(--jp-text)]">{option.name}</span>
             <span className="flex shrink-0 gap-1">
-              {option.swatch.map((colour) => (
-                <span key={colour} style={{ backgroundColor: colour }} className="h-3 w-3 rounded-full" />
+              {/* Keyed by position: a palette may well use one colour twice. */}
+              {option.dots.map((colour, i) => (
+                <span
+                  key={i}
+                  style={{ backgroundColor: colour }}
+                  className="h-3 w-3 rounded-full border border-[var(--jp-border)]"
+                />
               ))}
             </span>
           </button>
@@ -145,6 +156,7 @@ export function SettingsDialog({ settings, update, onSwap, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("Theme");
   const { mode, orientation, outputFirst, split, timeout } = settings;
   const columns = orientation === "columns";
+  const app = appTheme(settings.theme);
   const code = codeTheme(settings.code);
 
   return (
@@ -173,28 +185,23 @@ export function SettingsDialog({ settings, update, onSwap, onClose }: Props) {
               <Swatches
                 value={settings.theme}
                 onChange={(next) => update({ theme: next })}
-                options={APP_THEMES.map((t) => ({
-                  id: t.id,
-                  name: t.name,
-                  bg: t.bg,
-                  border: t.border,
-                  text: t.text,
-                  swatch: [t.accent, t.muted, t.border],
-                }))}
+                options={APP_THEMES.map((t) => ({ id: t.id, name: t.name, dots: [t.bg, t.text, t.accent] }))}
               />
             </Field>
 
-            <Field label="Code" hint="The editor and the output share it, so a string is the same green in both.">
+            <Field
+              label="Code"
+              hint={`The editor and the output share it, so a string is the same green in both. ${
+                app.dark ? "Dark" : "Light"
+              } themes, to go under ${app.name}.`}
+            >
               <Swatches
                 value={settings.code}
                 onChange={(next) => update({ code: next })}
-                options={CODE_THEMES.map((t) => ({
+                options={codeThemesFor(app.dark).map((t) => ({
                   id: t.id,
                   name: t.name,
-                  bg: t.bg,
-                  border: t.dark ? t.gutter : t.comment,
-                  text: t.text,
-                  swatch: [t.keyword, t.string, t.number],
+                  dots: [t.bg, t.keyword, t.string],
                 }))}
               />
             </Field>

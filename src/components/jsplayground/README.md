@@ -39,9 +39,12 @@ come from it. That is what keeps a string the same green whether you are writing
 reading what it printed, and it is why the console's tones are named abstractly in the
 worker: the mapping to a colour cannot be made until the palette is known.
 
-Splitting the two is what makes an arbitrary pairing safe. A light code theme under dark
-chrome is a light code surface inside a dark frame, not dark text on a dark background,
-because a code theme carries its own `bg` rather than borrowing the app's.
+The two are separate choices but not independent ones: the code list is filtered to the
+app theme's own brightness, because a light code surface under dark chrome is perfectly
+legible and still looks like a mistake. Switching the app between light and dark carries
+the code theme to the same slot in the other list rather than to a fixed default, so
+going dark and back again returns the theme you started on. `use-settings.ts` holds that
+invariant, not the dialog, so no caller can leave the two out of step.
 
 Every colour in the app reads a `--jp-*` custom property set on the root element, which
 is the only reason a theme can be a value picked at runtime rather than a second set of

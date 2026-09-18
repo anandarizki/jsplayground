@@ -122,20 +122,25 @@ export const APP_THEMES: AppTheme[] = [
     id: "dusk",
     name: "Dusk",
     dark: true,
-    bg: "#101019",
-    panel: "#161623",
-    border: "#262640",
-    text: "#e4e4f0",
-    muted: "#9b9bb5",
-    faint: "#626280",
-    hover: "#1e1e30",
-    active: "#2a2a45",
+    // Dark grey rather than the near-black indigo this was. Night already owns the
+    // bottom of the range, and a second theme sitting a hair above it was a choice
+    // between two blacks; this one sits three times further up, where the panels and
+    // borders separate from the background on their own instead of needing to be found.
+    // The indigo accent stays — it is what keeps the grey from reading as a second Night.
+    bg: "#24242a",
+    panel: "#2d2d34",
+    border: "#3d3d46",
+    text: "#e6e6ec",
+    muted: "#a3a3b0",
+    faint: "#7e7e8c",
+    hover: "#33333b",
+    active: "#414150",
     accent: "#a5b4fc",
-    accentBg: "#2a2760",
+    accentBg: "#343b66",
     warn: "#fcd34d",
-    warnBg: "#332b12",
+    warnBg: "#3f3719",
     error: "#fca5a5",
-    errorBg: "#3d161c",
+    errorBg: "#4a2028",
   },
   {
     id: "forest",

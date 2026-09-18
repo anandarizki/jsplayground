@@ -41,6 +41,9 @@ from, so on a plane it is the same app it is at a desk.
   shape of the source you would have written.
 - **Circular references, getters and revoked proxies are handled**, not crashed on: a cycle
   says `[Circular]`, and a getter is named rather than invoked.
+- **Two switches in the output's own line** — whether values arrive open or shut, and
+  whether the output is coloured at all. Both reach output already on screen, so you flip
+  one while reading rather than before the run that needed it.
 - **A huge value cannot take the tab with it.** Depth, width and a total budget per line
   keep `console.log` of a million-element array from becoming a 47 MB message and a
   multi-second freeze. Whatever is left out says `… N more`, the same way a merely wide
@@ -63,6 +66,9 @@ from, so on a plane it is the same app it is at a desk.
   until you want it.
 - **Completion scoped to the sandbox** — it offers what the worker actually has, not
   `document` and `localStorage`, which are not there.
+- **`⌘D` selects the next occurrence** — the word under the cursor, then one more with
+  each press, each with a cursor of its own, exactly where your hands expect it. It works
+  from anywhere in the app, so the browser does not take the key and bookmark the page.
 - **Everything is remembered** — the code you left in the editor, and theme, layout,
   split, run mode, text sizes and timeout with it — in `localStorage`, read before the
   first frame so there is no flash of the wrong theme and nothing to retype. The document

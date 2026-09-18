@@ -56,7 +56,7 @@ status. The editor is also memoised, since the page re-renders on each console m
 and none of them are about the editor.
 
 The source line says when the code will run — `runs as you type`, or `⌘↵ to run` when
-the play button is unlit — and holds **format** and **save**. Format is Prettier,
+the play button is unlit — and holds **format**. Format is Prettier,
 imported on the click rather than at the top of the file, because the parser and printer
 together are the largest thing here and most sessions never press it; that first fetch
 is seconds on a slow connection, so the line says `formatting…` while it is happening and
@@ -66,9 +66,17 @@ it is. Code that does not parse cannot be formatted, so that same line says
 `cannot format` for a moment and the output pane gives the real error on the next run.
 
 The output line is the status — `ready`, `running…`, how long the last run took, or why
-it stopped — and holds the **eraser**. Both of those were a strip across the foot of the
-whole window, which put a run's duration as far from the output it measured as the
-layout allowed.
+it stopped — and holds the **eraser**, along with the two switches that change how the
+output reads: whether values arrive open or shut, and whether it is coloured at all. Both
+are settings in the dialog as well, where there is room to say what they do; here they
+are one click, because they are the two you change while looking at a result rather than
+while setting the app up. Each says its state with its glyph rather than with a
+highlight, the way the rail's play does. Neither waits for the next run: `ConsoleView`
+keys its rows on the open setting, so flipping it re-mounts what is already on screen and
+the pane itself is the answer to what the switch does.
+
+Both lines were a single strip across the foot of the whole window once, which put a
+run's duration as far from the output it measured as the layout allowed.
 
 The editor holds one document, not a library of them. There is no saving, no shelf and no
 shipped examples: the starter snippet is what a visitor arrives to, and what they type
@@ -198,6 +206,16 @@ later. There is no gap to guard now, and a session that changes nothing writes n
   the row that owns it, so a new run starts everything shut. The pane follows new output
   only when it was already at the bottom: output that arrives while you are reading
   something further up should not take you away from it.
+- `editor.tsx` — CodeMirror, and the two keys the app binds for itself. Both sit behind
+  `Prec.highest`, which is not decoration: `basicSetup` is spread into the configuration
+  ahead of the extensions passed beside it, so its `defaultKeymap` is asked first, and it
+  binds `Mod-Enter` to `insertBlankLine` — which handled the key, returned true, and left
+  ⌘↵ running nothing while quietly opening a line. `Mod-d` selects the next occurrence of
+  what is under the cursor, one press at a time, out of `@codemirror/search` — the one
+  command wanted from a keymap that is otherwise off, because the search panel is not.
+  That key is also caught at the window, since CodeMirror can only prevent what reaches
+  it and Chrome bookmarks the page on ⌘D otherwise; a dialog, a field, or an event already
+  handled all stop it, so it only ever stands in for an editor that was not focused.
 - `completion.ts` — property and global completion. `scopeCompletionSource` walks a
   real object, and the easy move is to hand it `globalThis` — which would offer
   `document`, `window` and `localStorage`, none of which exist in a worker. It gets a

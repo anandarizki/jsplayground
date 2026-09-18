@@ -6,12 +6,26 @@
  * between them drags.
  *
  * Each pane carries its own status line along the bottom, with the controls that act on
- * that pane at the far end of it: the source says when it will run and holds format and
- * save, the output says how long the last run took and holds the eraser. Nothing sits
- * above a pane, and nothing spans both — the rail keeps only what acts on neither.
+ * that pane at the far end of it: the source says when it will run and holds format, the
+ * output says how long the last run took and holds the two switches that change how it
+ * reads, along with the eraser. Nothing sits above a pane, and nothing spans both — the
+ * rail keeps only what acts on neither.
  */
 
-import { AArrowDown, AArrowUp, AlignLeft, CircleHelp, Eraser, Play, Settings, Square } from "lucide-react";
+import {
+  AArrowDown,
+  AArrowUp,
+  AlignLeft,
+  Circle,
+  CircleHelp,
+  Contrast,
+  Eraser,
+  FoldVertical,
+  Play,
+  Settings,
+  Square,
+  UnfoldVertical,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { AboutDialog } from "./about-dialog";
@@ -295,6 +309,40 @@ export default function JsPlayground() {
             what="output"
             className={paneButton}
           />
+          <span className="mx-1 h-4 w-px bg-[var(--jp-border)]" />
+          {/* The two settings that change how the output reads, where you are reading it.
+              They live in the dialog too, with the room to explain themselves; here they
+              are a click, because they are the two you change while looking at a result
+              rather than while setting the app up.
+
+              Each says its state with its glyph rather than with a highlight, the way the
+              rail's play does: unfolded or folded, a circle with colour in it or a
+              circle emptied of it. Flipping either reaches the output already on screen — the rows are
+              keyed on the setting — so the answer to what it does is the pane itself. */}
+          <button
+            onClick={() => update({ consoleOpen: !settings.consoleOpen })}
+            aria-pressed={settings.consoleOpen}
+            aria-label={settings.consoleOpen ? "Stop opening values by default" : "Open values by default"}
+            title={
+              settings.consoleOpen
+                ? "Values arrive open — click to keep them shut"
+                : "Values arrive shut — click to open them"
+            }
+            className={paneButton}
+          >
+            {settings.consoleOpen ? <UnfoldVertical size={15} /> : <FoldVertical size={15} />}
+          </button>
+          <button
+            onClick={() => update({ consoleColor: !settings.consoleColor })}
+            aria-pressed={settings.consoleColor}
+            aria-label={settings.consoleColor ? "Stop colouring the output" : "Colour the output"}
+            title={
+              settings.consoleColor ? "Coloured — click for plain text" : "Plain — click to colour it"
+            }
+            className={paneButton}
+          >
+            {settings.consoleColor ? <Contrast size={15} /> : <Circle size={15} />}
+          </button>
           <span className="mx-1 h-4 w-px bg-[var(--jp-border)]" />
           <button onClick={runner.clear} aria-label="Erase output" title="Erase output" className={paneButton}>
             <Eraser size={15} />

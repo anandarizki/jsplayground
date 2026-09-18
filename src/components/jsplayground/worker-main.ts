@@ -17,11 +17,14 @@ export function workerMain() {
   const MAX_STRING = 4000; // characters of any one string
   const MAX_DEPTH = 4; // nesting levels before "{…}"
   const MAX_ITEMS = 100; // array/object/map members
-  const WRAP_WIDTH = 72; // a container wider than this breaks onto its own lines
-  const INDENT = "  "; // one nesting level of a broken container
+  const INLINE_WIDTH = 72; // a container wider than this collapses behind a toggle
+  const PREVIEW_WIDTH = 96; // characters of a collapsed container's summary line
+  const NEST = 2; // columns the view indents each open level by
+  const MAX_NODES = 4000; // members serialised per console call
 
   const scope: any = self;
   let sent = 0;
+  let nodes = 0;
   let capped = false;
   let lineOffset = 0;
 
@@ -79,128 +82,50 @@ export function workerMain() {
     return n;
   }
 
-  /** Shift an already-rendered member one level right. Members are rendered before
-   *  anyone knows how deep they will sit, so their indentation is applied afterwards —
-   *  which is also what makes nesting compose without threading a depth through. */
-  function shift(tokens: any[]) {
+  /** Cut a token run down to `width`, marking the cut. Previews are one line whatever
+   *  the value is, so this is what keeps a 4000-character string out of the summary. */
+  function truncate(tokens: any[], width: number) {
     const out = [];
+    let n = 0;
     for (let i = 0; i < tokens.length; i++) {
-      const tk = tokens[i];
-      out.push(tk.v.indexOf("\n") === -1 ? tk : { t: tk.t, v: tk.v.split("\n").join("\n" + INDENT) });
+      const v = tokens[i].v;
+      if (n + v.length <= width) {
+        out.push(tokens[i]);
+        n += v.length;
+        continue;
+      }
+      if (width > n) out.push({ t: tokens[i].t, v: v.slice(0, width - n) });
+      out.push({ t: "dim", v: "…" });
+      return out;
     }
     return out;
   }
 
   /**
-   * Pack many short members several to a line, rather than one per line.
+   * Lay a container's members out on one line. Everything that reads as a list —
+   * arrays, objects, Maps, Sets, typed arrays — comes through here, so the rule is the
+   * same wherever it applies.
    *
-   * Breaking is the right answer for a handful of wide members and the wrong one for a
-   * hundred narrow ones: `Array.from({ length: 100 }, (_, i) => i)` one-per-line is a
-   * hundred lines of nothing. Returns null when the members are too few, too wide or
-   * already broken, which is the signal to fall back to one per line.
+   * There is no multi-line form: a container too wide for one line is not wrapped, it
+   * is handed to the view as something that opens. `pad` is the space just inside the
+   * braces that `{ a: 1 }` has and `[1]` does not.
    */
-  function group(items: any[], budget: number) {
-    if (items.length <= 6) return null;
-    let widest = 0;
-    let numeric = true;
-    for (let i = 0; i < items.length; i++) {
-      const w = measure(items[i]);
-      if (w > 16) return null; // Infinity included: anything broken stays one per line
-      if (w > widest) widest = w;
-      if (items[i].length !== 1 || items[i][0].t !== "number") numeric = false;
-    }
-
-    const perLine = Math.floor((budget - INDENT.length) / (widest + 2));
-    if (perLine < 2) return null;
-
-    const rows = [];
-    for (let i = 0; i < items.length; i += perLine) {
-      const last = Math.min(items.length, i + perLine);
-      const row: any[] = [];
-      for (let j = i; j < last; j++) {
-        const gap = widest - measure(items[j]);
-        const spaces = gap > 0 ? new Array(gap + 1).join(" ") : "";
-        // Digits line up on the right, so a column of numbers can be read down.
-        // Anything else pads on its far side — after the comma, never before it.
-        if (spaces && numeric) push(row, "punct", spaces);
-        for (let k = 0; k < items[j].length; k++) row.push(items[j][k]);
-        if (j + 1 < last) {
-          push(row, "punct", ", ");
-          if (spaces && !numeric) push(row, "punct", spaces);
-        }
-      }
-      rows.push(row);
-    }
-    return rows;
-  }
-
-  /**
-   * Lay a container's members out, on one line if they fit and one per line if they do
-   * not. Everything that reads as a list — arrays, objects, Maps, Sets, typed arrays —
-   * comes through here, so the rule is the same wherever it applies.
-   *
-   * `pad` is the space just inside the braces that `{ a: 1 }` has and `[1]` does not.
-   * `depth` is charged against the budget, because a container that fits in 72 columns
-   * on its own does not fit once its parent has indented it four levels in. `hidden` is
-   * how many members were dropped by the MAX_ITEMS cap — kept out of `items` so it
-   * cannot widen a column or make a list of numbers look like a list of something else.
-   */
-  function assemble(
-    out: any[],
-    prefix: string,
-    open: string,
-    close: string,
-    items: any[],
-    pad: boolean,
-    depth: number,
-    hidden: number,
-  ) {
+  function assemble(out: any[], prefix: string, open: string, close: string, items: any[], pad: boolean, hidden: number) {
     if (prefix) push(out, "dim", prefix);
-    if (items.length === 0) {
+    if (items.length === 0 && hidden === 0) {
       push(out, "punct", open + close);
       return;
     }
-    const overflow = hidden > 0 ? "… " + hidden + " more" : "";
-
-    // A floor, so the innermost levels do not degenerate into one token per line.
-    const budget = Math.max(24, WRAP_WIDTH - depth * INDENT.length);
-    let total = prefix.length + open.length + close.length + (pad ? 2 : 0);
-    if (overflow) total += overflow.length + 2;
+    push(out, "punct", pad ? open + " " : open);
     for (let i = 0; i < items.length; i++) {
-      const w = measure(items[i]);
-      if (w === Infinity) {
-        total = Infinity;
-        break;
-      }
-      total += w + (i ? 2 : 0); // ", "
+      if (i) push(out, "punct", ", ");
+      for (let j = 0; j < items[i].length; j++) out.push(items[i][j]);
     }
-
-    if (total <= budget) {
-      push(out, "punct", pad ? open + " " : open);
-      for (let i = 0; i < items.length; i++) {
-        if (i) push(out, "punct", ", ");
-        for (let j = 0; j < items[i].length; j++) out.push(items[i][j]);
-      }
-      if (overflow) {
-        push(out, "punct", ", ");
-        push(out, "dim", overflow);
-      }
-      push(out, "punct", pad ? " " + close : close);
-      return;
+    if (hidden > 0) {
+      if (items.length) push(out, "punct", ", ");
+      push(out, "dim", "… " + hidden + " more");
     }
-
-    const lines = group(items, budget) || items;
-    push(out, "punct", open);
-    for (let i = 0; i < lines.length; i++) {
-      push(out, "punct", (i ? "," : "") + "\n" + INDENT);
-      const member = shift(lines[i]);
-      for (let j = 0; j < member.length; j++) out.push(member[j]);
-    }
-    if (overflow) {
-      push(out, "punct", ",\n" + INDENT);
-      push(out, "dim", overflow);
-    }
-    push(out, "punct", "\n" + close);
+    push(out, "punct", pad ? " " + close : close);
   }
 
   function tokenize(value: any, out: any[], depth: number, seen: any[]) {
@@ -262,7 +187,7 @@ export function workerMain() {
       else push(item, "dim", "<empty>");
       items.push(item);
     }
-    assemble(out, label, "[", "]", items, false, depth, length - shown);
+    assemble(out, label, "[", "]", items, false, length - shown);
   }
 
   function pairTokens(value: any, out: any[], depth: number, seen: any[]) {
@@ -278,7 +203,7 @@ export function workerMain() {
       }
       i += 1;
     });
-    assemble(out, "Map(" + value.size + ") ", "{", "}", items, true, depth, value.size - items.length);
+    assemble(out, "Map(" + value.size + ") ", "{", "}", items, true, value.size - items.length);
   }
 
   function setTokens(value: any, out: any[], depth: number, seen: any[]) {
@@ -292,7 +217,7 @@ export function workerMain() {
       }
       i += 1;
     });
-    assemble(out, "Set(" + value.size + ") ", "{", "}", items, true, depth, value.size - items.length);
+    assemble(out, "Set(" + value.size + ") ", "{", "}", items, true, value.size - items.length);
   }
 
   function objectTokens(value: any, out: any[], depth: number, seen: any[], kind: string) {
@@ -330,21 +255,177 @@ export function workerMain() {
       else tokenize(d ? d.value : undefined, item, depth + 1, seen);
       items.push(item);
     }
-    assemble(out, prefix, "{", "}", items, true, depth, keys.length - shown);
+    assemble(out, prefix, "{", "}", items, true, keys.length - shown);
   }
 
-  function argsToParts(args: any): any[] {
+  // ------------------------------------------------------------------ nodes
+
+  /** Whether a value has members worth opening. Dates, regexps, errors, promises and
+   *  the weak collections all print as one thing and hide nothing behind it. */
+  function opens(value: any, kind: string) {
+    if (value === null || typeof value !== "object") return false;
+    if (kind === "Date" || kind === "RegExp" || kind === "Promise") return false;
+    if (kind === "WeakMap" || kind === "WeakSet" || kind === "DataView") return false;
+    if (kind === "Error" || value instanceof Error) return false;
+    return true;
+  }
+
+  /** How many members a container has, without rendering any of them — the cheap test
+   *  that keeps a 10,000-element array from being formatted just to be measured. */
+  function count(value: any, kind: string) {
+    if (Array.isArray(value) || ArrayBuffer.isView(value)) return (value as any).length;
+    if (kind === "Map" || kind === "Set") return value.size;
+    try {
+      return Object.keys(value).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** One member: the key tokens (already carrying their `: ` or ` => `) and the value. */
+  function member(key: any[], value: any) {
+    return { key: key, value: value };
+  }
+
+  function membersOf(value: any, kind: string, depth: number, seen: any[]) {
+    const list: any[] = [];
+    const indexKey = function (i: number) {
+      return [{ t: "dim", v: i + ": " }];
+    };
+
+    if (Array.isArray(value) || (ArrayBuffer.isView(value) && kind !== "DataView")) {
+      const list_ = value as any;
+      const shown = Math.min(list_.length, MAX_ITEMS);
+      for (let i = 0; i < shown; i++) {
+        if (Array.isArray(list_) && !(i in list_)) {
+          list.push(member(indexKey(i), { n: "v", tokens: [{ t: "dim", v: "<empty>" }] }));
+        } else {
+          list.push(member(indexKey(i), toNode(list_[i], depth + 1, seen)));
+        }
+      }
+      return list;
+    }
+
+    if (kind === "Map") {
+      let i = 0;
+      value.forEach(function (v: any, k: any) {
+        if (i < MAX_ITEMS) {
+          const key: any[] = [];
+          tokenize(k, key, MAX_DEPTH - 1, []);
+          push(key, "punct", " => ");
+          list.push(member(key, toNode(v, depth + 1, seen)));
+        }
+        i += 1;
+      });
+      return list;
+    }
+
+    if (kind === "Set") {
+      let i = 0;
+      value.forEach(function (v: any) {
+        if (i < MAX_ITEMS) list.push(member(indexKey(i), toNode(v, depth + 1, seen)));
+        i += 1;
+      });
+      return list;
+    }
+
+    let keys: string[] = [];
+    try {
+      keys = Object.keys(value);
+    } catch {
+      /* revoked proxy */
+    }
+    const shown = Math.min(keys.length, MAX_ITEMS);
+    for (let i = 0; i < shown; i++) {
+      const key: any[] = [];
+      push(key, "key", isIdent(keys[i]) ? keys[i] : quote(keys[i]));
+      push(key, "punct", ": ");
+      // Reading through a getter would run user code inside the formatter, which can
+      // throw, recurse, or take a second. Name it and move on.
+      let d;
+      try {
+        d = Object.getOwnPropertyDescriptor(value, keys[i]);
+      } catch {
+        d = null;
+      }
+      if (d && (d.get || d.set)) {
+        list.push(member(key, { n: "v", tokens: [{ t: "dim", v: d.get ? "[Getter]" : "[Setter]" }] }));
+      } else {
+        list.push(member(key, toNode(d ? d.value : undefined, depth + 1, seen)));
+      }
+    }
+    return list;
+  }
+
+  /**
+   * One console argument, as something the view can render.
+   *
+   * Two shapes come out of here. `v` is a run of tokens and prints as itself; `c` opens,
+   * and carries a one-line summary plus its members. Which one a value gets is decided
+   * by width alone: anything that fits on a line stays on the line, because a disclosure
+   * triangle on `{ a: 1 }` is a click that buys nothing. Everything wider collapses —
+   * the whole point being that a huge object costs one line until it is asked for.
+   *
+   * Members are serialised eagerly, because there is no asking the worker later: it is
+   * terminated once the run settles. That is what MAX_DEPTH, MAX_ITEMS and MAX_NODES
+   * are holding back — without them a deep structure would be walked in full to build a
+   * tree nobody opens.
+   */
+  function toNode(value: any, depth: number, seen: any[]): any {
+    const kind = Object.prototype.toString.call(value).slice(8, -1);
+    const flat = function () {
+      const tokens: any[] = [];
+      tokenize(value, tokens, depth, seen);
+      return { n: "v", tokens: tokens };
+    };
+
+    if (!opens(value, kind) || seen.indexOf(value) !== -1 || depth >= MAX_DEPTH || nodes >= MAX_NODES) {
+      return flat();
+    }
+
+    // Wide containers skip the inline attempt: rendering one only to measure it and
+    // throw it away is the expensive half of formatting a big value.
+    const size = count(value, kind);
+    if (size <= 16) {
+      const inline = flat();
+      if (measure(inline.tokens) <= Math.max(24, INLINE_WIDTH - depth * NEST)) return inline;
+    }
+
+    const preview: any[] = [];
+    // Length first, because a shut array's summary is truncated long before its end and
+    // "how many" is the thing you actually wanted. Map and Set already say their own.
+    if (Array.isArray(value)) push(preview, "dim", "(" + size + ") ");
+    // One level only: members show as `{…}` in the summary, the way devtools does it.
+    tokenize(value, preview, MAX_DEPTH - 1, seen);
+
+    nodes += Math.min(size, MAX_ITEMS);
+    seen.push(value);
+    let list;
+    try {
+      list = membersOf(value, kind, depth, seen);
+    } finally {
+      seen.pop();
+    }
+
+    return {
+      n: "c",
+      preview: truncate(preview, PREVIEW_WIDTH),
+      members: list,
+      hidden: Math.max(0, size - list.length),
+    };
+  }
+
+  function argsToNodes(args: any): any[] {
+    nodes = 0;
     const parts = [];
     for (let i = 0; i < args.length; i++) {
-      const out: any[] = [];
       // A top-level string argument prints bare, the way a devtools console does.
       if (typeof args[i] === "string") {
         const s: string = args[i];
-        push(out, "plain", s.length > MAX_STRING ? s.slice(0, MAX_STRING) + "…" : s);
+        parts.push({ n: "v", tokens: [{ t: "plain", v: s.length > MAX_STRING ? s.slice(0, MAX_STRING) + "…" : s }] });
       } else {
-        tokenize(args[i], out, 0, []);
+        parts.push(toNode(args[i], 0, []));
       }
-      parts.push(out);
     }
     return parts;
   }
@@ -353,7 +434,7 @@ export function workerMain() {
 
   function logger(level: string) {
     return function (...args: any[]) {
-      emit({ t: "log", level: level, parts: argsToParts(args) });
+      emit({ t: "log", level: level, parts: argsToNodes(args) });
     };
   }
 
@@ -375,13 +456,13 @@ export function workerMain() {
     clear: function () {},
     assert: function (condition: any, ...rest_: any[]) {
       if (condition) return;
-      const rest = argsToParts(rest_);
-      emit({ t: "log", level: "error", parts: [[{ t: "error", v: "Assertion failed" }]].concat(rest) });
+      const rest = argsToNodes(rest_);
+      emit({ t: "log", level: "error", parts: [{ n: "v", tokens: [{ t: "error", v: "Assertion failed" }] }].concat(rest) });
     },
     count: function (label: any) {
       const key = label === undefined ? "default" : String(label);
       counters[key] = (counters[key] || 0) + 1;
-      emit({ t: "log", level: "log", parts: [[{ t: "plain", v: key + ": " + counters[key] }]] });
+      emit({ t: "log", level: "log", parts: [{ n: "v", tokens: [{ t: "plain", v: key + ": " + counters[key] }] }] });
     },
     time: function (label: any) {
       timers[label === undefined ? "default" : String(label)] = now();
@@ -394,7 +475,7 @@ export function workerMain() {
       emit({
         t: "log",
         level: "log",
-        parts: [[{ t: "plain", v: key + ": " }, { t: "number", v: ms.toFixed(2) + " ms" }]],
+        parts: [{ n: "v", tokens: [{ t: "plain", v: key + ": " }, { t: "number", v: ms.toFixed(2) + " ms" }] }],
       });
     },
   };

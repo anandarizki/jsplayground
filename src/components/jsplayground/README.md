@@ -34,12 +34,13 @@ Every control is in the left rail, which is why the panes carry no chrome of the
   late `setTimeout` output with a 15 s ceiling.
 - `console-view.tsx` — the formatter's output. The worker serialises to abstract
   tones; the mapping to colour lives here, next to the editor's palette.
-- Layout is decided in the worker, not in CSS, because only the formatter knows where
-  a structure can be broken. A container prints on one line if it fits in 72 columns
-  and one member per line if it does not — and a member that has already broken forces
-  its parent to break, however short the parent looks. Many short members are the
-  exception: a hundred numbers one per line is a hundred lines of nothing, so they pack
-  into columns, right-aligned when they are all numbers.
+- Wide values open rather than wrap. A container that fits in 72 columns prints on the
+  line — a disclosure triangle on `{ a: 1 }` is a click that buys nothing — and anything
+  wider collapses to a one-line summary the view can open, its members following the
+  same rule one level down. The tree is serialised up front, because the worker is
+  terminated once the run settles and there is nobody left to ask for the next level;
+  `MAX_DEPTH`, `MAX_ITEMS` and `MAX_NODES` are what bound that. Open state lives in the
+  row that owns it, so a new run starts everything shut.
 - `completion.ts` — property and global completion. `scopeCompletionSource` walks a
   real object, and the easy move is to hand it `globalThis` — which would offer
   `document`, `window` and `localStorage`, none of which exist in a worker. It gets a
@@ -50,7 +51,8 @@ Edge cases it already survives: unbounded loops, syntax errors, thrown non-Error
 unhandled rejections, circular structures, getters (named, never invoked), sparse
 arrays, `Map`/`Set`/typed arrays, huge strings and runaway output (both capped),
 `alert`/`prompt`/`confirm` (answered in the console rather than throwing), and
-stale results from a run that has been superseded.
+stale results from a run that has been superseded, and objects wide enough or deep
+enough that printing them whole would fill the pane.
 
 Error line numbers are mapped back to the editor's own numbering by measuring the
 `AsyncFunction` wrapper's offset at startup rather than assuming it.

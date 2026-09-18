@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-import type { Entry, Token, Tone } from "./types";
+import type { Entry, Printed, Token, Tone } from "./types";
 
 /** Tones are abstract in the worker so the mapping lives here, once, next to the
  *  editor's palette. Dark follows the repo's `.dark` on a `group` ancestor. */
@@ -36,6 +37,52 @@ function Tokens({ tokens }: { tokens: Token[] }) {
       ))}
     </>
   );
+}
+
+/**
+ * A container, shut until asked. Open state is deliberately local rather than lifted:
+ * entries are keyed by id, so React keeps each toggle's state where it belongs for as
+ * long as the row lives, and a new run starts everything shut — which is what you want,
+ * since the next run's objects are not the ones you opened.
+ */
+function Expandable({ node }: { node: Extract<Printed, { n: "c" }> }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span className="inline-block max-w-full align-top">
+      <button
+        onClick={() => setOpen((was) => !was)}
+        aria-expanded={open}
+        className="-mx-0.5 inline-flex max-w-full items-start gap-0.5 rounded px-0.5 text-left transition hover:bg-zinc-200/70 group-[.dark]:hover:bg-zinc-800/70"
+      >
+        <ChevronRight
+          size={12}
+          className={`mt-[3px] shrink-0 text-zinc-400 transition-transform group-[.dark]:text-zinc-500 ${open ? "rotate-90" : ""}`}
+        />
+        <span className="min-w-0">
+          <Tokens tokens={node.preview} />
+        </span>
+      </button>
+
+      {open ? (
+        <span className="mt-0.5 mb-1 ml-[5px] block border-l border-zinc-200 pl-3 group-[.dark]:border-zinc-800">
+          {node.members.map((entry, i) => (
+            <span key={i} className="block">
+              <Tokens tokens={entry.key} />
+              <Node node={entry.value} />
+            </span>
+          ))}
+          {node.hidden > 0 ? (
+            <span className="block text-zinc-400 group-[.dark]:text-zinc-500">… {node.hidden} more</span>
+          ) : null}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function Node({ node }: { node: Printed }) {
+  return node.n === "v" ? <Tokens tokens={node.tokens} /> : <Expandable node={node} />;
 }
 
 type Props = {
@@ -97,7 +144,7 @@ export function ConsoleView({ entries, className, hint = "console.log(…) to pr
                   {entry.parts.map((part, i) => (
                     <span key={i}>
                       {i > 0 ? " " : null}
-                      <Tokens tokens={part} />
+                      <Node node={part} />
                     </span>
                   ))}
                 </span>

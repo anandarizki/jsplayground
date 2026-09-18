@@ -17,6 +17,22 @@ export type Tone =
 
 export type Token = { t: Tone; v: string };
 
+/**
+ * One console argument, as the worker hands it over.
+ *
+ * `v` is a run of tokens and prints as itself. `c` opens: it carries a one-line summary
+ * for when it is shut and its members for when it is not. The worker is terminated once
+ * a run settles, so there is no fetching a level on demand — everything the view can
+ * ever show is already here, which is what the caps in the worker are bounding.
+ */
+export type Printed =
+  | { n: "v"; tokens: Token[] }
+  | { n: "c"; preview: Token[]; members: Member[]; hidden: number };
+
+/** A member of an open container. `key` carries its own `: ` or ` => `; Sets and arrays
+ *  use the index, so every row reads the same way. */
+export type Member = { key: Token[]; value: Printed };
+
 export type LogLevel = "log" | "info" | "warn" | "error" | "debug";
 
 /** Where a failure came from. `syntax` never ran; `timeout` was killed mid-run. */
@@ -26,8 +42,8 @@ export type LogEntry = {
   kind: "log";
   id: number;
   level: LogLevel;
-  /** One token list per console argument. */
-  parts: Token[][];
+  /** One per console argument. */
+  parts: Printed[];
   /** Arrived after the top-level code had already finished. */
   deferred: boolean;
 };
@@ -48,7 +64,7 @@ export type Entry = LogEntry | ErrorEntry | NoticeEntry;
 
 /** Worker → main. */
 export type WorkerMessage =
-  | { t: "log"; level: LogLevel; parts: Token[][] }
+  | { t: "log"; level: LogLevel; parts: Printed[] }
   | { t: "error"; name: string; message: string; line: number | null; column: number | null; phase: ErrorPhase }
   | { t: "notice"; text: string }
   | { t: "done"; ms: number };

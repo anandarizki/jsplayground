@@ -100,7 +100,11 @@ export default function JsPlayground() {
   const [first, second] = outputFirst ? [output, source] : [source, output];
 
   return (
-    <div className={`group flex h-dvh ${dark ? "dark bg-zinc-950 text-zinc-100" : "bg-zinc-50 text-zinc-900"}`}>
+    <div
+      // `color-scheme` is what gets the console pane's scrollbar to match the theme.
+      style={{ colorScheme: dark ? "dark" : "light" }}
+      className={`group flex h-dvh ${dark ? "dark bg-zinc-950 text-zinc-100" : "bg-zinc-50 text-zinc-900"}`}
+    >
       <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-zinc-200 py-3 group-[.dark]:border-zinc-800">
         {runner.status === "running" ? (
           <button onClick={runner.cancel} aria-label="Stop" className={`${rail} text-red-500`}>

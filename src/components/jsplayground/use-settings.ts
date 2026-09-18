@@ -18,11 +18,12 @@ export type Settings = {
 const KEY = "jsplayground:settings:1";
 
 const DEFAULTS: Settings = {
-  dark: false,
+  dark: true,
   mode: "auto",
-  orientation: "rows",
-  outputFirst: true,
-  split: 58,
+  orientation: "columns",
+  /** Source on the left, output on the right. */
+  outputFirst: false,
+  split: 50,
 };
 
 /**
@@ -55,10 +56,10 @@ function parse(raw: string | null): Partial<Settings> {
 /**
  * The settings, remembered.
  *
- * Read after mount, never during render: the server has no storage and no media query,
- * so resolving either one early would render markup the client immediately contradicts.
- * `ready` is how callers know the stored values have landed — it is what keeps the
- * first automatic run from firing against defaults that are about to be replaced.
+ * Storage is read after mount rather than during render, so a blocked or absent
+ * `localStorage` costs a preference and not the first paint. `ready` is how callers know
+ * the stored values have landed — it is what keeps the first automatic run from firing
+ * against defaults that are about to be replaced.
  */
 export function useSettings(): {
   settings: Settings;
@@ -76,11 +77,9 @@ export function useSettings(): {
     } catch {
       // Private windows and blocked storage both throw on access, not on write.
     }
-    // Only fall back to the system theme when nothing was ever stored: someone who
-    // chose light on a dark machine meant it.
-    const dark =
-      stored.dark ?? (typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setSettings({ ...DEFAULTS, ...stored, dark });
+    // The system theme deliberately does not get a vote: dark is this app's own default,
+    // and anyone who wants light says so with the rail — which is then what is stored.
+    setSettings({ ...DEFAULTS, ...stored });
     loaded.current = true;
     setReady(true);
   }, []);

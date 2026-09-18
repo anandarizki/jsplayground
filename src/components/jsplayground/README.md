@@ -18,7 +18,8 @@ Every control is in the left rail, which is why the panes carry no chrome of the
 - **Eraser** — clear the output.
 - **Layout / Swap** — rows or columns, and which pane leads.
 - **Sun / Moon** — light or dark. The editor and the console share one palette, so a
-  string is the same green whether you are writing it or reading what it printed.
+  string is the same green whether you are writing it or reading what it printed. The
+  system preference gets no vote: dark is this app's own default.
 - **Mark / Question** — the source on GitHub, and what the app is. Both sit at the foot
   of the rail, away from the controls that touch the code. The dialog renders inside the
   app's root rather than in a portal, so the `group` carrying `dark` is still above it.

@@ -5,3 +5,10 @@ body,
 #root {
   height: 100%;
 }
+
+/* Dark is the default theme, so paint the page that colour before React mounts —
+   otherwise the first frame is a white flash. Light mode covers this with its own
+   full-height background. */
+body {
+  background-color: var(--color-zinc-950);
+}

@@ -64,9 +64,12 @@ and none of them are about the editor.
 The source line says when the code will run — `runs as you type`, or `⌘↵ to run` when
 the play button is unlit — and holds **format** and **save**. Format is Prettier,
 imported on the click rather than at the top of the file, because the parser and printer
-together are the largest thing here and most sessions never press it; code that does not
-parse cannot be formatted, so that same line says `cannot format` for a moment and the
-output pane gives the real error on the next run. Save names what is in the editor and
+together are the largest thing here and most sessions never press it; that first fetch
+is seconds on a slow connection, so the line says `formatting…` while it is happening and
+the button will not start a second one. Whatever is typed in the meantime wins — a result
+computed from the document as it was before is not allowed to overwrite the document as
+it is. Code that does not parse cannot be formatted, so that same line says
+`cannot format` for a moment and the output pane gives the real error on the next run. Save names what is in the editor and
 puts it at the top of the shelf.
 
 The output line is the status — `ready`, `running…`, how long the last run took, or why

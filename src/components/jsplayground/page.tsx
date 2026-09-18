@@ -110,10 +110,20 @@ export default function JsPlayground() {
   // says so in more detail the moment it runs. The status line only has to admit the
   // button did nothing, and then stop saying it.
   const [unformattable, setUnformattable] = useState(false);
+  // Prettier's first call fetches its parser and printer, which are the largest thing
+  // this app can load. On a slow connection that is seconds, and the line has to say so
+  // or the button reads as broken.
+  const [formatting, setFormatting] = useState(false);
 
   // Stable, because `Dialog` holds it across renders and an inline lambda would be a new
   // one every time the page redraws.
   const closeDialog = useCallback(() => setDialog(null), []);
+
+  // What is in the editor now, as opposed to what was in it when something started
+  // waiting. Held in a ref rather than read from `code`, which is a snapshot of the
+  // render an await was launched from.
+  const codeRef = useRef(code);
+  codeRef.current = code;
 
   const frame = useRef<HTMLDivElement | null>(null);
   const columns = orientation === "columns";
@@ -179,12 +189,21 @@ export default function JsPlayground() {
   }, [unformattable]);
 
   const format = async () => {
+    if (formatting) return;
+    const snapshot = codeRef.current;
+    setFormatting(true);
     try {
-      const formatted = await formatCode(code);
+      const formatted = await formatCode(snapshot);
+      // Anything typed while Prettier was being fetched would be overwritten here by a
+      // result computed from the document as it was before that. The typing wins: it is
+      // the newer of the two, and it is the one nobody could get back.
+      if (codeRef.current !== snapshot) return;
       setUnformattable(false);
-      if (formatted !== code) setCode(formatted);
+      if (formatted !== snapshot) setCode(formatted);
     } catch {
-      setUnformattable(true);
+      if (codeRef.current === snapshot) setUnformattable(true);
+    } finally {
+      setFormatting(false);
     }
   };
 
@@ -220,7 +239,13 @@ export default function JsPlayground() {
         {/* The one line this pane has to itself, so a failed format borrows it rather
             than opening somewhere of its own. */}
         <span className={unformattable ? "text-[var(--jp-error)]" : undefined}>
-          {unformattable ? "cannot format" : mode === "auto" ? "runs as you type" : "⌘↵ to run"}
+          {formatting
+            ? "formatting…"
+            : unformattable
+              ? "cannot format"
+              : mode === "auto"
+                ? "runs as you type"
+                : "⌘↵ to run"}
         </span>
         <div className="-mr-1.5 flex items-center gap-0.5">
           <TextSize
@@ -231,7 +256,13 @@ export default function JsPlayground() {
             className={paneButton}
           />
           <span className="mx-1 h-4 w-px bg-[var(--jp-border)]" />
-          <button onClick={format} aria-label="Format code" title="Format code" className={paneButton}>
+          <button
+            onClick={format}
+            disabled={formatting}
+            aria-label="Format code"
+            title="Format code"
+            className={paneButton}
+          >
             <AlignLeft size={15} />
           </button>
           <button

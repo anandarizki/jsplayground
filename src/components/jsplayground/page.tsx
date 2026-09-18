@@ -7,12 +7,14 @@
  * panes themselves stay free of chrome.
  */
 
-import { ArrowLeftRight, ArrowUpDown, Columns2, Eraser, Moon, Play, Rows2, Square, Sun } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { ArrowLeftRight, ArrowUpDown, CircleHelp, Columns2, Eraser, Moon, Play, Rows2, Square, Sun } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
+import { AboutDialog } from "./about-dialog";
 import { ConsoleView } from "./console-view";
-import { EXAMPLES } from "./constants";
+import { EXAMPLES, GITHUB_URL } from "./constants";
 import { Editor } from "./editor";
+import { GithubMark } from "./github-mark";
 import { statusLabel, statusTone } from "./status";
 import { usePlayground } from "./use-playground";
 import { useSettings } from "./use-settings";
@@ -21,6 +23,8 @@ export default function JsPlayground() {
   const { settings, update, ready } = useSettings();
   const { dark, mode, orientation, outputFirst, split } = settings;
   const { code, setCode, dirty, runNow, runner } = usePlayground(mode, ready);
+  // Not a setting: nobody wants the dialog they closed to come back next visit.
+  const [about, setAbout] = useState(false);
 
   const frame = useRef<HTMLDivElement | null>(null);
   const dragging = useRef(false);
@@ -155,6 +159,30 @@ export default function JsPlayground() {
         >
           {dark ? <Sun size={15} /> : <Moon size={15} />}
         </button>
+
+        {/* Pushed to the foot of the rail: neither one touches the code. */}
+        <div className="mt-auto flex flex-col items-center gap-1">
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Source on GitHub"
+            title="Source on GitHub"
+            className={rail}
+          >
+            <GithubMark />
+          </a>
+
+          <button
+            onClick={() => setAbout((open) => !open)}
+            aria-label="About this app"
+            aria-expanded={about}
+            title="About this app"
+            className={`${rail} ${about ? "bg-zinc-200 text-zinc-900 group-[.dark]:bg-zinc-800 group-[.dark]:text-zinc-100" : ""}`}
+          >
+            <CircleHelp size={15} />
+          </button>
+        </div>
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -185,6 +213,8 @@ export default function JsPlayground() {
           <span className={statusTone(runner)}>{statusLabel(runner)}</span>
         </footer>
       </div>
+
+      {about ? <AboutDialog onClose={() => setAbout(false)} /> : null}
     </div>
   );
 }

@@ -75,3 +75,6 @@ while (true) n += 1;
 `,
   },
 ];
+
+/** Where the source lives. Shown in the rail and in the about dialog. */
+export const GITHUB_URL = "https://github.com/anandarizki/jsplayground";

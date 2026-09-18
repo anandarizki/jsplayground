@@ -6,7 +6,9 @@ The whole app. `src/App.tsx` renders it and nothing else.
 
 Neither half of it is. The two panes sit in **rows** or in **columns**, **either one can
 be first**, and the divider between them drags (double-click resets it to half). Swapping
-carries each pane's size with it, so the one you made tall stays tall.
+carries each pane's size with it, so the one you made tall stays tall. It opens as two
+columns — source left, output right — in dark, and `use-settings.ts` remembers whatever
+you change it to.
 
 Every control is in the left rail, which is why the panes carry no chrome of their own:
 
@@ -17,6 +19,9 @@ Every control is in the left rail, which is why the panes carry no chrome of the
 - **Layout / Swap** — rows or columns, and which pane leads.
 - **Sun / Moon** — light or dark. The editor and the console share one palette, so a
   string is the same green whether you are writing it or reading what it printed.
+- **Mark / Question** — the source on GitHub, and what the app is. Both sit at the foot
+  of the rail, away from the controls that touch the code. The dialog renders inside the
+  app's root rather than in a portal, so the `group` carrying `dark` is still above it.
 
 ## How it runs your code
 

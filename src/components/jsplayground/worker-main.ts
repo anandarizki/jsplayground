@@ -17,6 +17,8 @@ export function workerMain() {
   const MAX_STRING = 4000; // characters of any one string
   const MAX_DEPTH = 4; // nesting levels before "{…}"
   const MAX_ITEMS = 100; // array/object/map members
+  const WRAP_WIDTH = 72; // a container wider than this breaks onto its own lines
+  const INDENT = "  "; // one nesting level of a broken container
 
   const scope: any = self;
   let sent = 0;
@@ -64,6 +66,141 @@ export function workerMain() {
 
   function isIdent(key: string) {
     return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key);
+  }
+
+  /** Printed width of one member, or Infinity once it has broken over lines itself —
+   *  a container holding a broken member has to break too, whatever its own width. */
+  function measure(tokens: any[]) {
+    let n = 0;
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].v.indexOf("\n") !== -1) return Infinity;
+      n += tokens[i].v.length;
+    }
+    return n;
+  }
+
+  /** Shift an already-rendered member one level right. Members are rendered before
+   *  anyone knows how deep they will sit, so their indentation is applied afterwards —
+   *  which is also what makes nesting compose without threading a depth through. */
+  function shift(tokens: any[]) {
+    const out = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const tk = tokens[i];
+      out.push(tk.v.indexOf("\n") === -1 ? tk : { t: tk.t, v: tk.v.split("\n").join("\n" + INDENT) });
+    }
+    return out;
+  }
+
+  /**
+   * Pack many short members several to a line, rather than one per line.
+   *
+   * Breaking is the right answer for a handful of wide members and the wrong one for a
+   * hundred narrow ones: `Array.from({ length: 100 }, (_, i) => i)` one-per-line is a
+   * hundred lines of nothing. Returns null when the members are too few, too wide or
+   * already broken, which is the signal to fall back to one per line.
+   */
+  function group(items: any[], budget: number) {
+    if (items.length <= 6) return null;
+    let widest = 0;
+    let numeric = true;
+    for (let i = 0; i < items.length; i++) {
+      const w = measure(items[i]);
+      if (w > 16) return null; // Infinity included: anything broken stays one per line
+      if (w > widest) widest = w;
+      if (items[i].length !== 1 || items[i][0].t !== "number") numeric = false;
+    }
+
+    const perLine = Math.floor((budget - INDENT.length) / (widest + 2));
+    if (perLine < 2) return null;
+
+    const rows = [];
+    for (let i = 0; i < items.length; i += perLine) {
+      const last = Math.min(items.length, i + perLine);
+      const row: any[] = [];
+      for (let j = i; j < last; j++) {
+        const gap = widest - measure(items[j]);
+        const spaces = gap > 0 ? new Array(gap + 1).join(" ") : "";
+        // Digits line up on the right, so a column of numbers can be read down.
+        // Anything else pads on its far side — after the comma, never before it.
+        if (spaces && numeric) push(row, "punct", spaces);
+        for (let k = 0; k < items[j].length; k++) row.push(items[j][k]);
+        if (j + 1 < last) {
+          push(row, "punct", ", ");
+          if (spaces && !numeric) push(row, "punct", spaces);
+        }
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  /**
+   * Lay a container's members out, on one line if they fit and one per line if they do
+   * not. Everything that reads as a list — arrays, objects, Maps, Sets, typed arrays —
+   * comes through here, so the rule is the same wherever it applies.
+   *
+   * `pad` is the space just inside the braces that `{ a: 1 }` has and `[1]` does not.
+   * `depth` is charged against the budget, because a container that fits in 72 columns
+   * on its own does not fit once its parent has indented it four levels in. `hidden` is
+   * how many members were dropped by the MAX_ITEMS cap — kept out of `items` so it
+   * cannot widen a column or make a list of numbers look like a list of something else.
+   */
+  function assemble(
+    out: any[],
+    prefix: string,
+    open: string,
+    close: string,
+    items: any[],
+    pad: boolean,
+    depth: number,
+    hidden: number,
+  ) {
+    if (prefix) push(out, "dim", prefix);
+    if (items.length === 0) {
+      push(out, "punct", open + close);
+      return;
+    }
+    const overflow = hidden > 0 ? "… " + hidden + " more" : "";
+
+    // A floor, so the innermost levels do not degenerate into one token per line.
+    const budget = Math.max(24, WRAP_WIDTH - depth * INDENT.length);
+    let total = prefix.length + open.length + close.length + (pad ? 2 : 0);
+    if (overflow) total += overflow.length + 2;
+    for (let i = 0; i < items.length; i++) {
+      const w = measure(items[i]);
+      if (w === Infinity) {
+        total = Infinity;
+        break;
+      }
+      total += w + (i ? 2 : 0); // ", "
+    }
+
+    if (total <= budget) {
+      push(out, "punct", pad ? open + " " : open);
+      for (let i = 0; i < items.length; i++) {
+        if (i) push(out, "punct", ", ");
+        for (let j = 0; j < items[i].length; j++) out.push(items[i][j]);
+      }
+      if (overflow) {
+        push(out, "punct", ", ");
+        push(out, "dim", overflow);
+      }
+      push(out, "punct", pad ? " " + close : close);
+      return;
+    }
+
+    const lines = group(items, budget) || items;
+    push(out, "punct", open);
+    for (let i = 0; i < lines.length; i++) {
+      push(out, "punct", (i ? "," : "") + "\n" + INDENT);
+      const member = shift(lines[i]);
+      for (let j = 0; j < member.length; j++) out.push(member[j]);
+    }
+    if (overflow) {
+      push(out, "punct", ",\n" + INDENT);
+      push(out, "dim", overflow);
+    }
+    push(out, "punct", "\n" + close);
   }
 
   function tokenize(value: any, out: any[], depth: number, seen: any[]) {
@@ -117,55 +254,45 @@ export function workerMain() {
   }
 
   function listTokens(value: any, length: number, out: any[], depth: number, seen: any[], label: string) {
-    if (label) push(out, "dim", label);
-    push(out, "punct", "[");
+    const items: any[] = [];
     const shown = Math.min(length, MAX_ITEMS);
     for (let i = 0; i < shown; i++) {
-      if (i) push(out, "punct", ", ");
-      if (!(i in value)) {
-        push(out, "dim", "<empty>");
-        continue;
-      }
-      tokenize(value[i], out, depth + 1, seen);
+      const item: any[] = [];
+      if (i in value) tokenize(value[i], item, depth + 1, seen);
+      else push(item, "dim", "<empty>");
+      items.push(item);
     }
-    if (length > shown) push(out, "dim", (shown ? ", " : "") + "… " + (length - shown) + " more");
-    push(out, "punct", "]");
+    assemble(out, label, "[", "]", items, false, depth, length - shown);
   }
 
   function pairTokens(value: any, out: any[], depth: number, seen: any[]) {
-    push(out, "dim", "Map(" + value.size + ") ");
-    push(out, "punct", "{");
+    const items: any[] = [];
     let i = 0;
     value.forEach(function (v: any, k: any) {
-      if (i >= MAX_ITEMS) {
-        i += 1;
-        return;
+      if (i < MAX_ITEMS) {
+        const item: any[] = [];
+        tokenize(k, item, depth + 1, seen);
+        push(item, "punct", " => ");
+        tokenize(v, item, depth + 1, seen);
+        items.push(item);
       }
-      if (i) push(out, "punct", ", ");
-      tokenize(k, out, depth + 1, seen);
-      push(out, "punct", " => ");
-      tokenize(v, out, depth + 1, seen);
       i += 1;
     });
-    if (value.size > MAX_ITEMS) push(out, "dim", ", … " + (value.size - MAX_ITEMS) + " more");
-    push(out, "punct", "}");
+    assemble(out, "Map(" + value.size + ") ", "{", "}", items, true, depth, value.size - items.length);
   }
 
   function setTokens(value: any, out: any[], depth: number, seen: any[]) {
-    push(out, "dim", "Set(" + value.size + ") ");
-    push(out, "punct", "{");
+    const items: any[] = [];
     let i = 0;
     value.forEach(function (v: any) {
-      if (i >= MAX_ITEMS) {
-        i += 1;
-        return;
+      if (i < MAX_ITEMS) {
+        const item: any[] = [];
+        tokenize(v, item, depth + 1, seen);
+        items.push(item);
       }
-      if (i) push(out, "punct", ", ");
-      tokenize(v, out, depth + 1, seen);
       i += 1;
     });
-    if (value.size > MAX_ITEMS) push(out, "dim", ", … " + (value.size - MAX_ITEMS) + " more");
-    push(out, "punct", "}");
+    assemble(out, "Set(" + value.size + ") ", "{", "}", items, true, depth, value.size - items.length);
   }
 
   function objectTokens(value: any, out: any[], depth: number, seen: any[], kind: string) {
@@ -178,7 +305,6 @@ export function workerMain() {
     } catch {
       /* exotic prototypes */
     }
-    if (prefix) push(out, "dim", prefix);
 
     let keys: string[] = [];
     try {
@@ -186,13 +312,12 @@ export function workerMain() {
     } catch {
       /* revoked proxy */
     }
-    push(out, "punct", "{");
+    const items: any[] = [];
     const shown = Math.min(keys.length, MAX_ITEMS);
     for (let i = 0; i < shown; i++) {
-      if (i) push(out, "punct", ",");
-      push(out, "punct", " ");
-      push(out, "key", isIdent(keys[i]) ? keys[i] : quote(keys[i]));
-      push(out, "punct", ": ");
+      const item: any[] = [];
+      push(item, "key", isIdent(keys[i]) ? keys[i] : quote(keys[i]));
+      push(item, "punct", ": ");
       // Reading through a getter would run user code inside the formatter, which can
       // throw, recurse, or take a second. Name it and move on.
       let d;
@@ -201,11 +326,11 @@ export function workerMain() {
       } catch {
         d = null;
       }
-      if (d && (d.get || d.set)) push(out, "dim", d.get ? "[Getter]" : "[Setter]");
-      else tokenize(d ? d.value : undefined, out, depth + 1, seen);
+      if (d && (d.get || d.set)) push(item, "dim", d.get ? "[Getter]" : "[Setter]");
+      else tokenize(d ? d.value : undefined, item, depth + 1, seen);
+      items.push(item);
     }
-    if (keys.length > shown) push(out, "dim", ", … " + (keys.length - shown) + " more");
-    push(out, "punct", shown ? " }" : "}");
+    assemble(out, prefix, "{", "}", items, true, depth, keys.length - shown);
   }
 
   function argsToParts(args: any): any[] {

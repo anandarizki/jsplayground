@@ -34,6 +34,12 @@ Every control is in the left rail, which is why the panes carry no chrome of the
   late `setTimeout` output with a 15 s ceiling.
 - `console-view.tsx` — the formatter's output. The worker serialises to abstract
   tones; the mapping to colour lives here, next to the editor's palette.
+- Layout is decided in the worker, not in CSS, because only the formatter knows where
+  a structure can be broken. A container prints on one line if it fits in 72 columns
+  and one member per line if it does not — and a member that has already broken forces
+  its parent to break, however short the parent looks. Many short members are the
+  exception: a hundred numbers one per line is a hundred lines of nothing, so they pack
+  into columns, right-aligned when they are all numbers.
 - `completion.ts` — property and global completion. `scopeCompletionSource` walks a
   real object, and the easy move is to hand it `globalThis` — which would offer
   `document`, `window` and `localStorage`, none of which exist in a worker. It gets a

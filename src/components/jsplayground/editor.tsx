@@ -1,11 +1,32 @@
 import { javascript } from "@codemirror/lang-javascript";
 import { EditorView, keymap } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
-import { useMemo, useRef } from "react";
+import { memo, useMemo, useRef } from "react";
 
 import { sandboxCompletion } from "./completion";
 import { editorTheme } from "./editor-theme";
 import type { CodeTheme } from "./themes";
+
+/**
+ * Hoisted, and that is the whole point of it.
+ *
+ * `@uiw/react-codemirror` keys its reconfigure effect on this object's identity, so an
+ * inline literal — a new object every render — dispatched a full `StateEffect.reconfigure`
+ * of the editor on every keystroke, every divider mousemove and every status change. The
+ * careful work elsewhere in this file to keep the extension array stable was being undone
+ * by the one prop beside it. It never changes, so it is written where it cannot.
+ */
+const BASIC_SETUP = {
+  lineNumbers: true,
+  foldGutter: false,
+  highlightActiveLine: true,
+  highlightActiveLineGutter: true,
+  autocompletion: true,
+  closeBrackets: true,
+  tabSize: 2,
+  bracketMatching: true,
+  searchKeymap: false,
+};
 
 type Props = {
   value: string;
@@ -23,7 +44,7 @@ type Props = {
   maxHeight?: string;
 };
 
-export function Editor({
+function EditorInner({
   value,
   onChange,
   onRun,
@@ -69,17 +90,12 @@ export function Editor({
       maxHeight={maxHeight}
       theme="none"
       extensions={extensions}
-      basicSetup={{
-        lineNumbers: true,
-        foldGutter: false,
-        highlightActiveLine: true,
-        highlightActiveLineGutter: true,
-        autocompletion: true,
-        closeBrackets: true,
-        tabSize: 2,
-        bracketMatching: true,
-        searchKeymap: false,
-      }}
+      basicSetup={BASIC_SETUP}
     />
   );
 }
+
+/** Memoised because the page re-renders on every console message and every drag frame,
+ *  and none of those are about the editor. Its props are all stable or change only when
+ *  the editor really should be told. */
+export const Editor = memo(EditorInner);

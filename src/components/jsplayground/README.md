@@ -45,6 +45,13 @@ makes it a reconfiguration, and a reconfiguration is measured again. The theme c
 keyed by palette and size together, so the extension array is still stable across every
 render that changed neither.
 
+The editor's `basicSetup` is a module-level constant rather than the object literal it
+reads as, because `@uiw/react-codemirror` keys its reconfigure effect on that object's
+identity: written inline it was a new object every render, and so a full reconfiguration
+of the editor on every keystroke, every mousemove of a drag and every change of run
+status. The editor is also memoised, since the page re-renders on each console message
+and none of them are about the editor.
+
 The source line says when the code will run — `runs as you type`, or `⌘↵ to run` when
 the play button is unlit — and holds **format** and **save**. Format is Prettier,
 imported on the click rather than at the top of the file, because the parser and printer

@@ -73,7 +73,12 @@ function Branch({ node, label }: { node: Extract<Printed, { n: "c" }>; label?: T
       <button
         onClick={() => setOpen((was) => !was)}
         aria-expanded={open}
-        className="-mx-0.5 flex w-full items-start gap-0.5 rounded px-0.5 text-left transition hover:bg-[var(--jp-hover)]"
+        // No `w-full`: the button is a block-level flex and fills its container anyway,
+        // and pinning it to exactly that width was cancelling the negative margin either
+        // side. Inside the shrink-to-fit wrapper above, that lost four pixels the summary
+        // had been measured as needing — so every collapsed value close to its natural
+        // width wrapped onto a second line for want of them.
+        className="-mx-0.5 flex items-start gap-0.5 rounded px-0.5 text-left transition hover:bg-[var(--jp-hover)]"
       >
         <ChevronRight
           size={12}

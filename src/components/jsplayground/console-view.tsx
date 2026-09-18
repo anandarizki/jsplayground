@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, memo, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { DEFAULT_FONT_PX } from "./constants";
 import type { Entry, Member, Printed, Token, Tone } from "./types";
@@ -102,7 +102,7 @@ function Branch({ node, label }: { node: Extract<Printed, { n: "c" }>; label?: T
   );
 }
 
-function MemberRow({ member }: { member: Member }) {
+const MemberRow = memo(function MemberRow({ member }: { member: Member }) {
   if (member.value.n === "c") return <Branch node={member.value} label={member.key} />;
   return (
     <span className={`block ${GUTTER}`}>
@@ -110,18 +110,83 @@ function MemberRow({ member }: { member: Member }) {
       <Tokens tokens={member.value.tokens} />
     </span>
   );
-}
+});
 
-/** A console argument. Expandable ones are inline-block so `console.log("x", obj)` keeps
- *  its summary on one line, and the tree grows downward from there. */
-function Node({ node }: { node: Printed }) {
+/**
+ * A console argument. Expandable ones are inline-block so `console.log("x", obj)` keeps
+ * its summary on one line, and the tree grows downward from there.
+ *
+ * Memoised because this is where the tree recurses: a node the worker handed over is
+ * never mutated, so opening one branch has nothing to say to its siblings or to what is
+ * already drawn beneath it.
+ */
+const Node = memo(function Node({ node }: { node: Printed }) {
   if (node.n === "v") return <Tokens tokens={node.tokens} />;
   return (
     <span className="inline-block max-w-full align-top">
       <Branch node={node} />
     </span>
   );
-}
+});
+
+/**
+ * One line of output.
+ *
+ * Its own component so it can be memoised: entries are immutable and appended, so a run
+ * that adds a line has nothing to say to the lines already drawn. The key that keys this
+ * is the parent's business — it carries the "start open" setting as well as the id, so
+ * flipping that setting reaches rows already on screen rather than only the next run's.
+ */
+const EntryRow = memo(function EntryRow({ entry }: { entry: Entry }) {
+  if (entry.kind === "notice") {
+    return <li className="px-4 py-1.5 text-[var(--jp-faint)] italic">{entry.text}</li>;
+  }
+
+  if (entry.kind === "error") {
+    return (
+      <li className="border-l-2 border-[var(--jp-error)] bg-[var(--jp-error-bg)] px-4 py-2">
+        <span className="font-semibold text-[var(--jp-error)]">{entry.name}</span>
+        <span className="text-[var(--jp-error)]">{entry.message ? `: ${entry.message}` : ""}</span>
+        {entry.line !== null ? (
+          <span className="ml-2 text-[var(--jp-muted)]">
+            line {entry.line}
+            {entry.column !== null ? `:${entry.column}` : ""}
+          </span>
+        ) : null}
+      </li>
+    );
+  }
+
+  const row =
+    entry.level === "warn"
+      ? "bg-[var(--jp-warn-bg)] text-[var(--jp-warn)]"
+      : entry.level === "error"
+        ? "bg-[var(--jp-error-bg)] text-[var(--jp-error)]"
+        : entry.level === "debug"
+          ? "text-[var(--jp-muted)]"
+          : "";
+
+  return (
+    <li className={`flex items-start gap-3 px-4 py-1.5 ${row}`}>
+      <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
+        {entry.parts.map((part, i) => (
+          <span key={i}>
+            {i > 0 ? " " : null}
+            <Node node={part} />
+          </span>
+        ))}
+      </span>
+      {entry.deferred ? (
+        <span
+          title="printed after the top-level code finished"
+          className="mt-0.5 shrink-0 text-[0.77em] tracking-wide text-[var(--jp-faint)] uppercase"
+        >
+          late
+        </span>
+      ) : null}
+    </li>
+  );
+});
 
 type Props = {
   entries: Entry[];
@@ -136,7 +201,12 @@ type Props = {
   size?: number;
 };
 
-export function ConsoleView({
+/**
+ * Memoised, and so is everything under it. The page re-renders on every keystroke, every
+ * frame of a divider drag and every change of status, and none of those have anything to
+ * say to what has already printed.
+ */
+export const ConsoleView = memo(function ConsoleView({
   entries,
   className,
   hint = "console.log(…) to print something here.",
@@ -151,8 +221,12 @@ export function ConsoleView({
     if (node) node.scrollTop = node.scrollHeight;
   }, [entries.length]);
 
+  // A fresh object here would be a new context value on every render, which is every
+  // memo below this point defeated at once.
+  const options = useMemo(() => ({ colour, openByDefault }), [colour, openByDefault]);
+
   return (
-    <Options value={{ colour, openByDefault }}>
+    <Options value={options}>
       <div
         ref={scroller}
         style={{ fontSize: `${size}px` }}
@@ -162,71 +236,14 @@ export function ConsoleView({
           <p className="px-4 py-4 text-[var(--jp-faint)]">{hint}</p>
         ) : (
           <ul className="divide-y divide-[var(--jp-border)]">
-            {entries.map((entry) => {
-              if (entry.kind === "notice") {
-                return (
-                  <li key={entry.id} className="px-4 py-1.5 text-[var(--jp-faint)] italic">
-                    {entry.text}
-                  </li>
-                );
-              }
-
-              if (entry.kind === "error") {
-                return (
-                  <li
-                    key={entry.id}
-                    className="border-l-2 border-[var(--jp-error)] bg-[var(--jp-error-bg)] px-4 py-2"
-                  >
-                    <span className="font-semibold text-[var(--jp-error)]">{entry.name}</span>
-                    <span className="text-[var(--jp-error)]">{entry.message ? `: ${entry.message}` : ""}</span>
-                    {entry.line !== null ? (
-                      <span className="ml-2 text-[var(--jp-muted)]">
-                        line {entry.line}
-                        {entry.column !== null ? `:${entry.column}` : ""}
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              }
-
-              const row =
-                entry.level === "warn"
-                  ? "bg-[var(--jp-warn-bg)] text-[var(--jp-warn)]"
-                  : entry.level === "error"
-                    ? "bg-[var(--jp-error-bg)] text-[var(--jp-error)]"
-                    : entry.level === "debug"
-                      ? "text-[var(--jp-muted)]"
-                      : "";
-
-              return (
-                // Keyed on the setting as well as the id, so flipping "start open"
-                // reaches rows that are already on screen instead of only the next run's.
-                <li
-                  key={`${entry.id}:${openByDefault}`}
-                  className={`flex items-start gap-3 px-4 py-1.5 ${row}`}
-                >
-                  <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
-                    {entry.parts.map((part, i) => (
-                      <span key={i}>
-                        {i > 0 ? " " : null}
-                        <Node node={part} />
-                      </span>
-                    ))}
-                  </span>
-                  {entry.deferred ? (
-                    <span
-                      title="printed after the top-level code finished"
-                      className="mt-0.5 shrink-0 text-[0.77em] tracking-wide text-[var(--jp-faint)] uppercase"
-                    >
-                      late
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
+            {entries.map((entry) => (
+              // Keyed on the setting as well as the id, so flipping "start open" reaches
+              // rows that are already on screen instead of only the next run's.
+              <EntryRow key={`${entry.id}:${openByDefault}`} entry={entry} />
+            ))}
           </ul>
         )}
       </div>
     </Options>
   );
-}
+});

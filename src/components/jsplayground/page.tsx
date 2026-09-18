@@ -401,7 +401,7 @@ export default function JsPlayground() {
       {dialog === "settings" ? (
         <SettingsDialog settings={settings} update={update} onSwap={swap} onClose={closeDialog} />
       ) : null}
-      {dialog === "about" ? <AboutDialog timeout={settings.timeout} onClose={closeDialog} /> : null}
+      {dialog === "about" ? <AboutDialog onClose={closeDialog} /> : null}
     </div>
   );
 }

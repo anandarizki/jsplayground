@@ -187,7 +187,9 @@ later. There is no gap to guard now, and a session that changes nothing writes n
   four hundred and first entry costs nothing to not send. A level's members are a
   sibling of its summary rather than a continuation of it, which is what makes the indent
   a fixed step instead of the width of the key that introduced it. Open state lives in
-  the row that owns it, so a new run starts everything shut.
+  the row that owns it, so a new run starts everything shut. The pane follows new output
+  only when it was already at the bottom: output that arrives while you are reading
+  something further up should not take you away from it.
 - `completion.ts` — property and global completion. `scopeCompletionSource` walks a
   real object, and the easy move is to hand it `globalThis` — which would offer
   `document`, `window` and `localStorage`, none of which exist in a worker. It gets a
@@ -205,6 +207,15 @@ Error line numbers are mapped back to the editor's own numbering by measuring th
 `AsyncFunction` wrapper's offset at startup rather than assuming it.
 
 ## Boundaries
+
+The worker is a boundary against mistakes, not against malice. It has no DOM and it can
+be terminated mid-loop, which is what a playground needs; but a blob worker shares the
+page's origin, so a `fetch` from inside it is a same-origin request carrying the page's
+cookies, and the channel it reports on is one the code inside it can post to as well.
+The second of those is why nothing coming back over that channel is believed without
+being checked. The first costs nothing here — a static site with no session and nothing
+to ask for — and would be the thing to think about first if this were ever dropped into
+an app that has either.
 
 This folder is self-contained. `index.tsx` is its only public file; everything else
 is private and free to change. It imports nothing from outside itself apart from React,

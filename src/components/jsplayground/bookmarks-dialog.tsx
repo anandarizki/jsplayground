@@ -55,13 +55,15 @@ export function BookmarksDialog({
       <p className={`mt-4 ${heading}`}>saved</p>
       {bookmarks.length === 0 ? (
         <p className="px-3 py-2 text-[13px] text-[var(--jp-faint)]">
-          Nothing yet — the bookmark button above the source saves what you are editing.
+          Nothing yet — the bookmark button at the foot of the source saves what you are editing.
         </p>
       ) : (
         <ul className="mt-1 space-y-1">
           {bookmarks.map((bookmark) => (
             // The delete button cannot sit inside the row, which is itself a button, so
-            // the two are siblings and the group is what brings the second one out.
+            // the two are siblings and the group is what brings the second one forward.
+            // Forward, not out: hidden until hover is hidden for good on a touch screen,
+            // where there is no hovering to be done.
             <li key={bookmark.id} className="group flex items-center gap-1">
               <div className="min-w-0 flex-1">
                 <Row title={bookmark.title} code={bookmark.code} onPick={() => pick(bookmark.code)} />
@@ -70,7 +72,7 @@ export function BookmarksDialog({
                 onClick={() => onRemove(bookmark.id)}
                 aria-label={`Delete ${bookmark.title}`}
                 title="Delete"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--jp-faint)] opacity-0 transition group-hover:opacity-100 hover:bg-[var(--jp-hover)] hover:text-[var(--jp-error)] focus:opacity-100"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--jp-faint)] opacity-40 transition group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-[var(--jp-hover)] hover:text-[var(--jp-error)] focus:opacity-100"
               >
                 <Trash2 size={13} />
               </button>

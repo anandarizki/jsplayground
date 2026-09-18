@@ -179,7 +179,7 @@ export function SettingsDialog({ settings, update, onSwap, onClose }: Props) {
       <div className="mt-5 space-y-5">
         {tab === "Theme" ? (
           <>
-            <Field label="App" hint="The rail, the headers and these dialogs.">
+            <Field label="App" hint="The rail, the pane status lines and these dialogs.">
               <Swatches
                 value={settings.theme}
                 onChange={(next) => update({ theme: next })}

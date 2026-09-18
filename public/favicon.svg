@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- A console prompt: the chevron and the caret under it. The square carries the app's
+       own Night background so the mark reads on a light tab strip and a dark one alike. -->
+  <rect width="32" height="32" rx="7" fill="#0a0a0b" />
+  <path d="M9 10.5 14.5 16 9 21.5" fill="none" stroke="#7dd3a0" stroke-width="2.6"
+        stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M17.5 22h6" fill="none" stroke="#6b7280" stroke-width="2.6" stroke-linecap="round" />
+</svg>

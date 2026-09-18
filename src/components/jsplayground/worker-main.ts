@@ -3,7 +3,12 @@
  *
  * It runs in its own thread with no DOM, so the worst a snippet can do is burn one
  * core until the watchdog on the main thread calls `terminate()` — which is the only
- * thing that actually stops `while (true) {}`. Nothing here may reference a module
+ * thing that actually stops `while (true) {}`. It is not a security boundary: a blob
+ * worker shares the page's origin, so `fetch` from in here is a same-origin request with
+ * the page's cookies. That costs nothing on a static site with nothing to ask for, and it
+ * is the reason this is a sandbox for mistakes rather than for hostile code.
+ *
+ * Nothing here may reference a module
  * binding: `Function.prototype.toString` gives us this function's source and nothing
  * else, so a captured import would be undefined inside the worker.
  *

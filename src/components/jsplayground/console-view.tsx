@@ -41,6 +41,10 @@ function Tokens({ tokens }: { tokens: Token[] }) {
   );
 }
 
+/** How close to the bottom still counts as being at it, for the purpose of following
+ *  new output. A line's height, roughly. */
+const NEAR_BOTTOM = 40;
+
 /** Chevron column: the glyph plus its gap. Rows without a chevron are padded by it so
  *  every key in a level starts at the same column. */
 const GUTTER = "pl-[14px]";
@@ -215,10 +219,22 @@ export const ConsoleView = memo(function ConsoleView({
   size = DEFAULT_FONT_PX,
 }: Props) {
   const scroller = useRef<HTMLDivElement | null>(null);
+  // Whether the view was at the bottom, and so whether it should follow what is printed
+  // next. It has to be recorded as the person scrolls, because by the time a new line has
+  // arrived the measurement it depends on has already changed.
+  const following = useRef(true);
+
+  const onScroll = () => {
+    const node = scroller.current;
+    if (node) following.current = node.scrollHeight - node.scrollTop - node.clientHeight < NEAR_BOTTOM;
+  };
 
   useEffect(() => {
     const node = scroller.current;
-    if (node) node.scrollTop = node.scrollHeight;
+    if (!node) return;
+    // An empty pane is at its bottom by definition, so a new run always follows again.
+    if (entries.length === 0) following.current = true;
+    if (following.current) node.scrollTop = node.scrollHeight;
   }, [entries.length]);
 
   // A fresh object here would be a new context value on every render, which is every
@@ -229,6 +245,7 @@ export const ConsoleView = memo(function ConsoleView({
     <Options value={options}>
       <div
         ref={scroller}
+        onScroll={onScroll}
         style={{ fontSize: `${size}px` }}
         className={`overflow-auto font-mono leading-relaxed text-[var(--jp-code-text)] ${className ?? ""}`}
       >

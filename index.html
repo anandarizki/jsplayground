@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JSPlayground</title>
     <meta
@@ -28,6 +28,16 @@
     <script>
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
-    <script defer src="/_vercel/insights/script.js"></script>
+    <script>
+      // Served by the host, so in development it is a 404 in the console and nothing
+      // else. The flag below is substituted at build time — this file has no module
+      // scope to read `import.meta.env` from, and the build is the only place that knows.
+      if (%PROD%) {
+        var insights = document.createElement("script");
+        insights.defer = true;
+        insights.src = "/_vercel/insights/script.js";
+        document.head.appendChild(insights);
+      }
+    </script>
   </body>
 </html>

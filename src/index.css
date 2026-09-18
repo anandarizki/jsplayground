@@ -6,11 +6,12 @@ body,
   height: 100%;
 }
 
-/* Dark is the default theme, so paint the page that colour before React mounts —
-   otherwise the first frame is a white flash. Light mode covers this with its own
-   full-height background. */
+/* The theme is only known once storage has been read, so paint the default one's
+   background here — otherwise the first frame is a white flash. Any other theme covers
+   this with its own full-height background a moment later. Kept in step with the `night`
+   entry in themes.ts by hand; there is no way to read a TS module from CSS. */
 body {
-  background-color: var(--color-zinc-950);
+  background-color: #0a0a0b;
 }
 
 /* Tailwind 4's preflight leaves buttons on the default cursor. Every control in this

@@ -21,10 +21,10 @@ export type Playground = {
  * and running against the default in the meantime would burn a worker on a setting the
  * user turned off weeks ago.
  */
-export function usePlayground(mode: RunMode, ready: boolean): Playground {
+export function usePlayground(mode: RunMode, ready: boolean, timeout: number): Playground {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [ranAt, setRanAt] = useState(DEFAULT_CODE);
-  const runner = useRunner();
+  const runner = useRunner(timeout);
 
   const codeRef = useRef(code);
   codeRef.current = code;

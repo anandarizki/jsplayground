@@ -1,55 +1,25 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { tags as t } from "@lezer/highlight";
-import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { tags as t } from "@lezer/highlight";
+
+import type { CodeTheme } from "./themes";
 
 /**
- * Two themes built from one palette, shared with the console view's tones so a string
- * is the same green whether you are writing it or looking at what it printed.
+ * A CodeMirror theme built from one of the code palettes.
+ *
+ * The same palette drives the console's tones, so a string is the same green whether you
+ * are writing it or reading what it printed. Built per palette and cached, because the
+ * extension array must be stable across renders or the editor reconfigures on every
+ * keystroke.
  */
-const PALETTE = {
-  light: {
-    text: "#27272a",
-    caret: "#2563eb",
-    selection: "#bfdbfe",
-    gutter: "#d4d4d8",
-    gutterActive: "#71717a",
-    activeLine: "#00000006",
-    keyword: "#7c3aed",
-    string: "#059669",
-    number: "#2563eb",
-    comment: "#a1a1aa",
-    def: "#b45309",
-    property: "#0369a1",
-    type: "#be123c",
-    operator: "#71717a",
-  },
-  dark: {
-    text: "#e4e4e7",
-    caret: "#60a5fa",
-    selection: "#1e40af",
-    gutter: "#3f3f46",
-    gutterActive: "#a1a1aa",
-    activeLine: "#ffffff08",
-    keyword: "#c4b5fd",
-    string: "#6ee7b7",
-    number: "#93c5fd",
-    comment: "#71717a",
-    def: "#fcd34d",
-    property: "#7dd3fc",
-    type: "#fda4af",
-    operator: "#a1a1aa",
-  },
-};
-
-function build(mode: "light" | "dark"): Extension[] {
-  const c = PALETTE[mode];
+function build(c: CodeTheme): Extension[] {
   const theme = EditorView.theme(
     {
       "&": { color: c.text, backgroundColor: "transparent", fontSize: "13px" },
       "&.cm-focused": { outline: "none" },
       ".cm-scroller": {
-        fontFamily: "var(--font-geist-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
         lineHeight: "1.65",
       },
       ".cm-content": { caretColor: c.caret, padding: "16px 0" },
@@ -75,11 +45,12 @@ function build(mode: "light" | "dark"): Extension[] {
       ".cm-tooltip": {
         border: "none",
         borderRadius: "8px",
-        backgroundColor: mode === "dark" ? "#27272a" : "#ffffff",
+        backgroundColor: c.dark ? "#27272a" : "#ffffff",
+        color: c.text,
         boxShadow: "0 8px 24px rgba(0,0,0,.14)",
       },
     },
-    { dark: mode === "dark" },
+    { dark: c.dark },
   );
 
   const highlight = HighlightStyle.define([
@@ -87,18 +58,27 @@ function build(mode: "light" | "dark"): Extension[] {
     { tag: [t.string, t.special(t.string), t.regexp], color: c.string },
     { tag: [t.number, t.bool, t.null, t.atom], color: c.number },
     { tag: [t.comment, t.lineComment, t.blockComment], color: c.comment, fontStyle: "italic" },
-    { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.function(t.variableName))], color: c.def },
+    {
+      tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.function(t.variableName))],
+      color: c.def,
+    },
     { tag: [t.propertyName, t.attributeName], color: c.property },
     { tag: [t.typeName, t.className, t.namespace], color: c.type },
     { tag: [t.operator, t.punctuation, t.separator, t.bracket], color: c.operator },
     { tag: [t.variableName, t.definition(t.variableName)], color: c.text },
-    { tag: t.invalid, color: "#ef4444" },
+    { tag: t.invalid, color: c.error },
   ]);
 
   return [theme, syntaxHighlighting(highlight)];
 }
 
-const LIGHT = build("light");
-const DARK = build("dark");
+const cache = new Map<string, Extension[]>();
 
-export const editorTheme = (dark: boolean): Extension[] => (dark ? DARK : LIGHT);
+export function editorTheme(code: CodeTheme): Extension[] {
+  let built = cache.get(code.id);
+  if (!built) {
+    built = build(code);
+    cache.set(code.id, built);
+  }
+  return built;
+}

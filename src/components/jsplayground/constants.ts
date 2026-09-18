@@ -1,8 +1,16 @@
 /** Timings and starter code. All of it is tuned for judging, not for production. */
 
 /** How long the top-level code may run before the worker is killed. An unbounded
- *  loop never yields, so this watchdog is the only thing that can stop one. */
+ *  loop never yields, so this watchdog is the only thing that can stop one. This is the
+ *  default; the setting can move it between the two bounds below. */
 export const RUN_TIMEOUT_MS = 2000;
+
+/** Low enough to be useless is still the user's business, but zero is not a timeout. */
+export const MIN_TIMEOUT_MS = 100;
+
+/** A ceiling, because the watchdog is the only thing standing between a `while (true)`
+ *  and a core held until the tab closes. Waiting longer for one is not a feature. */
+export const MAX_TIMEOUT_MS = 5000;
 
 /** After the code settles, how long to keep listening for `setTimeout` output
  *  before tearing the worker down. Reset by each late message. */

@@ -22,12 +22,32 @@ At the foot of the rail, away from anything that touches the code: **settings**,
 source on **GitHub**, and **about**. Both dialogs render inside the app's root rather
 than in a portal, so the `group` carrying `dark` is still above them.
 
-Settings is where theme, layout, which pane leads, when it runs and evening up the panes
-now live. Three of those were bare icons in the rail, where a toggle's state was legible
-only as a glyph and there was nowhere to say what it did — a rail is a good place for a
-verb and a poor one for a preference. The editor and the console share one palette, so a
-string is the same green whether you are writing it or reading what it printed, and the
-system preference gets no vote on which palette: dark is this app's own default.
+Settings is where the rest lives, in four tabs — Theme, Layout, Console, Running — because
+a theme is chosen once and a timeout is changed while something is misbehaving, and one
+long column makes you re-read all of it to find either. A rail is a good place for a verb
+and a poor one for a preference: a bare icon can show a toggle's state only as a glyph,
+and has nowhere to say what the alternative is.
+
+## Two palettes
+
+`themes.ts` holds both, and they are deliberately separate.
+
+An **app theme** — Sunny, Calm, Paper, Night, Dusk, Forest — paints the chrome: the rail,
+the pane headers, the footer, the dialogs. A **code theme** — ten of them, Plain through
+Contrast — paints the two panes, and the editor's syntax and the console's output both
+come from it. That is what keeps a string the same green whether you are writing it or
+reading what it printed, and it is why the console's tones are named abstractly in the
+worker: the mapping to a colour cannot be made until the palette is known.
+
+Splitting the two is what makes an arbitrary pairing safe. A light code theme under dark
+chrome is a light code surface inside a dark frame, not dark text on a dark background,
+because a code theme carries its own `bg` rather than borrowing the app's.
+
+Every colour in the app reads a `--jp-*` custom property set on the root element, which
+is the only reason a theme can be a value picked at runtime rather than a second set of
+classes written beside the first. The one duplicate is the `body` background in
+`index.css`: the theme is not known until storage has been read, and something has to be
+painted before that, so it repeats `night`'s background by hand.
 
 ## How it runs your code
 
@@ -35,8 +55,10 @@ system preference gets no vote on which palette: dark is this app's own default.
   a snippet can do is burn a core until the watchdog terminates it. Runs the code
   through `AsyncFunction`, so top-level `await` works.
 - `use-runner.ts` — one worker per run (globals cannot leak between runs, and the
-  previous run is killed before the next starts), a 2 s watchdog, and a window for
-  late `setTimeout` output with a 15 s ceiling.
+  previous run is killed before the next starts), the watchdog, and a window for
+  late `setTimeout` output with a 15 s ceiling. The watchdog's limit is a setting,
+  between 100 ms and 5 s. The ceiling is not: it is what stops a `setInterval` holding
+  a thread open until the tab closes, which is not a preference.
 - `console-view.tsx` — the formatter's output. The worker serialises to abstract
   tones; the mapping to colour lives here, next to the editor's palette.
 - Values open rather than wrap. Anything with members to show prints as a one-line

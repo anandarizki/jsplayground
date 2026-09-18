@@ -19,7 +19,7 @@ export function statusLabel(runner: Runner): string {
 }
 
 export function statusTone(runner: Runner): string {
-  if (runner.status === "error" || runner.status === "timeout") return "text-red-500";
-  if (runner.status === "running") return "text-amber-500";
-  return "text-zinc-400 group-[.dark]:text-zinc-500";
+  if (runner.status === "error" || runner.status === "timeout") return "text-[var(--jp-error)]";
+  if (runner.status === "running") return "text-[var(--jp-warn)]";
+  return "text-[var(--jp-muted)]";
 }

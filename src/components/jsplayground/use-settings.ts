@@ -1,30 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { MAX_TIMEOUT_MS, MIN_TIMEOUT_MS, RUN_TIMEOUT_MS } from "./constants";
+import { APP_THEMES, CODE_THEMES } from "./themes";
 import type { RunMode } from "./types";
 
 export type Orientation = "rows" | "columns";
 
 export type Settings = {
-  dark: boolean;
+  /** An id from `APP_THEMES`. */
+  theme: string;
+  /** An id from `CODE_THEMES`. */
+  code: string;
   mode: RunMode;
   orientation: Orientation;
   /** Whether the output pane is the top/left one. */
   outputFirst: boolean;
   /** Percentage of the frame given to whichever pane is first. */
   split: number;
+  /** Whether a container in the output starts open. */
+  consoleOpen: boolean;
+  /** Whether the output is coloured at all. */
+  consoleColor: boolean;
+  /** How long the code may run before the worker is killed. */
+  timeout: number;
 };
 
 /** Versioned, so a later change of shape cannot be handed a stale object. */
-const KEY = "jsplayground:settings:1";
+const KEY = "jsplayground:settings:2";
+/** The shape before themes had names — read once, to carry a light/dark choice over. */
+const KEY_V1 = "jsplayground:settings:1";
 
 const DEFAULTS: Settings = {
-  dark: true,
+  theme: "night",
+  code: "ink",
   mode: "auto",
   orientation: "columns",
   /** Source on the left, output on the right. */
   outputFirst: false,
   split: 50,
+  consoleOpen: false,
+  consoleColor: true,
+  timeout: RUN_TIMEOUT_MS,
 };
+
+const clamp = (n: number, low: number, high: number) => Math.min(high, Math.max(low, n));
 
 /**
  * Nothing here trusts what comes back. Storage is shared with whatever else ran on
@@ -43,14 +62,38 @@ function parse(raw: string | null): Partial<Settings> {
   if (typeof value !== "object" || value === null) return {};
   const input = value as Record<string, unknown>;
   const out: Partial<Settings> = {};
-  if (typeof input.dark === "boolean") out.dark = input.dark;
+
+  // Theme ids are checked against the lists rather than merely typed: an id that no
+  // longer exists would otherwise resolve through a fallback on every read, for ever.
+  if (typeof input.theme === "string" && APP_THEMES.some((t) => t.id === input.theme)) out.theme = input.theme;
+  if (typeof input.code === "string" && CODE_THEMES.some((t) => t.id === input.code)) out.code = input.code;
   if (input.mode === "auto" || input.mode === "manual") out.mode = input.mode;
   if (input.orientation === "rows" || input.orientation === "columns") out.orientation = input.orientation;
   if (typeof input.outputFirst === "boolean") out.outputFirst = input.outputFirst;
-  if (typeof input.split === "number" && Number.isFinite(input.split)) {
-    out.split = Math.min(88, Math.max(12, input.split));
+  if (typeof input.split === "number" && Number.isFinite(input.split)) out.split = clamp(input.split, 12, 88);
+  if (typeof input.consoleOpen === "boolean") out.consoleOpen = input.consoleOpen;
+  if (typeof input.consoleColor === "boolean") out.consoleColor = input.consoleColor;
+  if (typeof input.timeout === "number" && Number.isFinite(input.timeout)) {
+    out.timeout = clamp(Math.round(input.timeout), MIN_TIMEOUT_MS, MAX_TIMEOUT_MS);
   }
   return out;
+}
+
+/** What the previous shape can still tell us: which way round the person liked it. */
+function carryOver(raw: string | null): Partial<Settings> {
+  if (!raw) return {};
+  let dark: boolean | null = null;
+  try {
+    const value = JSON.parse(raw);
+    if (value && typeof value === "object" && typeof (value as Record<string, unknown>).dark === "boolean") {
+      dark = (value as Record<string, boolean>).dark;
+    }
+  } catch {
+    return {};
+  }
+  const carried = parse(raw);
+  if (dark === null) return carried;
+  return { ...carried, theme: dark ? "night" : "sunny", code: dark ? "ink" : "plain" };
 }
 
 /**
@@ -73,12 +116,11 @@ export function useSettings(): {
   useEffect(() => {
     let stored: Partial<Settings> = {};
     try {
-      stored = parse(window.localStorage.getItem(KEY));
+      const current = window.localStorage.getItem(KEY);
+      stored = current ? parse(current) : carryOver(window.localStorage.getItem(KEY_V1));
     } catch {
       // Private windows and blocked storage both throw on access, not on write.
     }
-    // The system theme deliberately does not get a vote: dark is this app's own default,
-    // and anyone who wants light says so with the rail — which is then what is stored.
     setSettings({ ...DEFAULTS, ...stored });
     loaded.current = true;
     setReady(true);
@@ -93,10 +135,7 @@ export function useSettings(): {
     }
   }, [settings]);
 
-  const update = useCallback(
-    (patch: Partial<Settings>) => setSettings((previous) => ({ ...previous, ...patch })),
-    [],
-  );
+  const update = useCallback((patch: Partial<Settings>) => setSettings((previous) => ({ ...previous, ...patch })), []);
 
   return { settings, update, ready };
 }

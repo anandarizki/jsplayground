@@ -10,9 +10,9 @@ type Props = {
 /**
  * The shell both dialogs sit in.
  *
- * Rendered inside the app's root rather than in a portal, so the `group` that carries
- * the `dark` class is still an ancestor and every `group-[.dark]:` inside resolves the
- * same way it does in the panes.
+ * Rendered inside the app's root rather than in a portal, which is what puts it inside
+ * the element carrying the theme's custom properties — a portalled dialog would land on
+ * `document.body` and inherit none of them.
  */
 export function Dialog({ title, onClose, children }: Props) {
   const close = useRef<HTMLButtonElement | null>(null);
@@ -32,7 +32,7 @@ export function Dialog({ title, onClose, children }: Props) {
   return (
     <div
       onMouseDown={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/20 p-4 group-[.dark]:bg-zinc-950/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
     >
       <div
         role="dialog"
@@ -40,18 +40,18 @@ export function Dialog({ title, onClose, children }: Props) {
         aria-labelledby={titleId}
         // The backdrop closes on mousedown; the panel must not pass its own through.
         onMouseDown={(event) => event.stopPropagation()}
-        className="relative max-h-full w-full max-w-md overflow-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl group-[.dark]:border-zinc-800 group-[.dark]:bg-zinc-900"
+        className="relative max-h-full w-full max-w-md overflow-auto rounded-xl border border-[var(--jp-border)] bg-[var(--jp-panel)] p-6 shadow-xl"
       >
         <button
           ref={close}
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-900 group-[.dark]:hover:bg-zinc-800 group-[.dark]:hover:text-zinc-100"
+          className="absolute top-4 right-4 flex h-7 w-7 items-center justify-center rounded-lg text-[var(--jp-faint)] transition hover:bg-[var(--jp-hover)] hover:text-[var(--jp-text)]"
         >
           <X size={15} />
         </button>
 
-        <h2 id={titleId} className="pr-8 font-mono text-sm text-zinc-900 group-[.dark]:text-zinc-100">
+        <h2 id={titleId} className="pr-8 font-mono text-sm text-[var(--jp-text)]">
           {title}
         </h2>
 

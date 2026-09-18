@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ASYNC_CEILING_MS, ASYNC_IDLE_MS, RUN_TIMEOUT_MS } from "./constants";
+import { ASYNC_CEILING_MS, ASYNC_IDLE_MS } from "./constants";
 import type { Entry, RunStatus, WorkerMessage } from "./types";
 import { WORKER_SOURCE } from "./worker-main";
 
@@ -26,7 +26,7 @@ const supported = () =>
  * before the next one starts. `terminate()` is the only lever that works on a thread
  * that never yields, so every path out of a run goes through it.
  */
-export function useRunner(): Runner {
+export function useRunner(timeout: number): Runner {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [status, setStatus] = useState<RunStatus>("idle");
   const [ms, setMs] = useState<number | null>(null);
@@ -143,14 +143,14 @@ export function useRunner(): Runner {
           name: "Timeout",
           message:
             "Stopped after " +
-            RUN_TIMEOUT_MS +
+            timeout +
             " ms. The code never handed control back — an unbounded loop can only be killed from outside.",
           line: null,
           column: null,
           phase: "timeout",
         });
         setStatus("timeout");
-      }, RUN_TIMEOUT_MS);
+      }, timeout);
 
       ceiling.current = window.setTimeout(() => {
         if (!worker.current) return;
@@ -160,7 +160,7 @@ export function useRunner(): Runner {
 
       w.postMessage({ t: "run", code });
     },
-    [kill],
+    [kill, timeout],
   );
 
   const cancel = useCallback(() => {

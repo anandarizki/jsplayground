@@ -5,13 +5,14 @@ import { useMemo, useRef } from "react";
 
 import { sandboxCompletion } from "./completion";
 import { editorTheme } from "./editor-theme";
+import type { CodeTheme } from "./themes";
 
 type Props = {
   value: string;
   onChange: (next: string) => void;
   /** Bound to Mod-Enter, whatever the current run mode is. */
   onRun: () => void;
-  dark: boolean;
+  code: CodeTheme;
   className?: string;
   /** Passed straight through to CodeMirror. "100%" fills a flex pane; "auto" grows
    *  with the document, which is what the notebook variant wants. */
@@ -20,7 +21,7 @@ type Props = {
   maxHeight?: string;
 };
 
-export function Editor({ value, onChange, onRun, dark, className, height = "100%", minHeight, maxHeight }: Props) {
+export function Editor({ value, onChange, onRun, code, className, height = "100%", minHeight, maxHeight }: Props) {
   // Held in a ref so a changing callback does not rebuild the extension array, which
   // would reconfigure the editor on every keystroke.
   const runRef = useRef(onRun);
@@ -41,9 +42,9 @@ export function Editor({ value, onChange, onRun, dark, className, height = "100%
           },
         },
       ]),
-      ...editorTheme(dark),
+      ...editorTheme(code),
     ],
-    [dark],
+    [code],
   );
 
   return (

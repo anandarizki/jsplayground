@@ -8,7 +8,7 @@
  */
 
 import { CircleHelp, Eraser, Play, Settings, Square } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { AboutDialog } from "./about-dialog";
 import { ConsoleView } from "./console-view";
@@ -17,13 +17,17 @@ import { Editor } from "./editor";
 import { GithubMark } from "./github-mark";
 import { SettingsDialog } from "./settings-dialog";
 import { statusLabel, statusTone } from "./status";
+import { appTheme, codeTheme, cssVars } from "./themes";
 import { usePlayground } from "./use-playground";
 import { useSettings } from "./use-settings";
 
 export default function JsPlayground() {
   const { settings, update, ready } = useSettings();
-  const { dark, mode, orientation, outputFirst, split } = settings;
-  const { code, setCode, dirty, runNow, runner } = usePlayground(mode, ready);
+  const { mode, orientation, outputFirst, split } = settings;
+  const { code, setCode, dirty, runNow, runner } = usePlayground(mode, ready, settings.timeout);
+
+  const app = appTheme(settings.theme);
+  const palette = codeTheme(settings.code);
   // Not a setting: nobody wants the dialog they closed to come back next visit.
   const [dialog, setDialog] = useState<"settings" | "about" | null>(null);
 
@@ -56,9 +60,10 @@ export default function JsPlayground() {
   const swap = () => update({ outputFirst: !outputFirst, split: 100 - split });
 
   const rail =
-    "flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-900 group-[.dark]:hover:bg-zinc-800 group-[.dark]:hover:text-zinc-100";
+    "flex h-9 w-9 items-center justify-center rounded-lg text-[var(--jp-faint)] transition hover:bg-[var(--jp-hover)] hover:text-[var(--jp-text)]";
+  const railOn = "bg-[var(--jp-active)] text-[var(--jp-text)]";
   const paneHeader =
-    "flex h-9 shrink-0 items-center justify-between gap-3 px-4 font-mono text-[11px] text-zinc-400 group-[.dark]:text-zinc-600";
+    "flex h-9 shrink-0 items-center justify-between gap-3 px-4 font-mono text-[11px] text-[var(--jp-muted)]";
 
   const source = (
     <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -69,15 +74,15 @@ export default function JsPlayground() {
             <button
               key={example.label}
               onClick={() => setCode(example.code)}
-              className="transition hover:text-zinc-900 group-[.dark]:hover:text-zinc-100"
+              className="transition hover:text-[var(--jp-text)]"
             >
               {example.label.toLowerCase()}
             </button>
           ))}
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden border-t border-zinc-200 group-[.dark]:border-zinc-800">
-        <Editor value={code} onChange={setCode} onRun={runNow} dark={dark} className="h-full" />
+      <div className="min-h-0 flex-1 overflow-hidden border-t border-[var(--jp-border)] bg-[var(--jp-code-bg)]">
+        <Editor value={code} onChange={setCode} onRun={runNow} code={palette} className="h-full" />
       </div>
     </section>
   );
@@ -86,14 +91,16 @@ export default function JsPlayground() {
     <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <div className={paneHeader}>
         <span>output</span>
-        <button onClick={runner.clear} className="transition hover:text-zinc-900 group-[.dark]:hover:text-zinc-100">
+        <button onClick={runner.clear} className="transition hover:text-[var(--jp-text)]">
           clear
         </button>
       </div>
       <ConsoleView
         entries={runner.entries}
-        className="flex-1 border-t border-zinc-200 group-[.dark]:border-zinc-800"
+        className="flex-1 border-t border-[var(--jp-border)]"
         hint="› output appears here"
+        colour={settings.consoleColor}
+        openByDefault={settings.consoleOpen}
       />
     </section>
   );
@@ -102,13 +109,14 @@ export default function JsPlayground() {
 
   return (
     <div
-      // `color-scheme` is what gets the console pane's scrollbar to match the theme.
-      style={{ colorScheme: dark ? "dark" : "light" }}
-      className={`group flex h-dvh ${dark ? "dark bg-zinc-950 text-zinc-100" : "bg-zinc-50 text-zinc-900"}`}
+      // Both palettes land here as custom properties; everything below reads them rather
+      // than naming a colour. `color-scheme` is what matches the scrollbars to the theme.
+      style={{ colorScheme: app.dark ? "dark" : "light", ...cssVars(app, palette) } as CSSProperties}
+      className="flex h-dvh bg-[var(--jp-bg)] text-[var(--jp-text)]"
     >
-      <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-zinc-200 py-3 group-[.dark]:border-zinc-800">
+      <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--jp-border)] py-3">
         {runner.status === "running" ? (
-          <button onClick={runner.cancel} aria-label="Stop" className={`${rail} text-red-500`}>
+          <button onClick={runner.cancel} aria-label="Stop" className={`${rail} text-[var(--jp-error)]`}>
             <Square size={15} fill="currentColor" />
           </button>
         ) : (
@@ -121,13 +129,13 @@ export default function JsPlayground() {
             title={mode === "auto" ? "Live — click to freeze" : "Frozen — click to run as you type"}
             className={`${rail} relative ${
               mode === "auto"
-                ? "bg-emerald-100 text-emerald-600 group-[.dark]:bg-emerald-500/15 group-[.dark]:text-emerald-400"
-                : "text-zinc-900 group-[.dark]:text-zinc-100"
+                ? "bg-[var(--jp-accent-bg)] text-[var(--jp-accent)]"
+                : "text-[var(--jp-text)]"
             }`}
           >
             <Play size={15} fill="currentColor" />
             {mode === "manual" && dirty ? (
-              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-amber-400" />
+              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[var(--jp-warn)]" />
             ) : null}
           </button>
         )}
@@ -143,7 +151,7 @@ export default function JsPlayground() {
             aria-label="Settings"
             aria-expanded={dialog === "settings"}
             title="Layout, theme and when it runs"
-            className={`${rail} ${dialog === "settings" ? "bg-zinc-200 text-zinc-900 group-[.dark]:bg-zinc-800 group-[.dark]:text-zinc-100" : ""}`}
+            className={`${rail} ${dialog === "settings" ? railOn : ""}`}
           >
             <Settings size={15} />
           </button>
@@ -164,7 +172,7 @@ export default function JsPlayground() {
             aria-label="About this app"
             aria-expanded={dialog === "about"}
             title="About this app"
-            className={`${rail} ${dialog === "about" ? "bg-zinc-200 text-zinc-900 group-[.dark]:bg-zinc-800 group-[.dark]:text-zinc-100" : ""}`}
+            className={`${rail} ${dialog === "about" ? railOn : ""}`}
           >
             <CircleHelp size={15} />
           </button>
@@ -183,7 +191,7 @@ export default function JsPlayground() {
               document.body.style.userSelect = "none";
             }}
             onDoubleClick={() => update({ split: 50 })}
-            className={`relative shrink-0 bg-zinc-200 group-[.dark]:bg-zinc-800 ${
+            className={`relative shrink-0 bg-[var(--jp-border)] ${
               columns ? "w-px cursor-col-resize" : "h-px cursor-row-resize"
             }`}
           >
@@ -194,7 +202,7 @@ export default function JsPlayground() {
         </div>
 
         {/* Left half is deliberately empty: the byline chip is pinned there. */}
-        <footer className="flex h-8 shrink-0 items-center justify-end gap-5 border-t border-zinc-200 px-4 font-mono text-[11px] text-zinc-400 group-[.dark]:border-zinc-800 group-[.dark]:text-zinc-600">
+        <footer className="flex h-8 shrink-0 items-center justify-end gap-5 border-t border-[var(--jp-border)] px-4 font-mono text-[11px] text-[var(--jp-muted)]">
           <span>{mode === "auto" ? "runs as you type" : "⌘↵ to run"}</span>
           <span className={statusTone(runner)}>{statusLabel(runner)}</span>
         </footer>
@@ -203,7 +211,7 @@ export default function JsPlayground() {
       {dialog === "settings" ? (
         <SettingsDialog settings={settings} update={update} onSwap={swap} onClose={() => setDialog(null)} />
       ) : null}
-      {dialog === "about" ? <AboutDialog onClose={() => setDialog(null)} /> : null}
+      {dialog === "about" ? <AboutDialog timeout={settings.timeout} onClose={() => setDialog(null)} /> : null}
     </div>
   );
 }

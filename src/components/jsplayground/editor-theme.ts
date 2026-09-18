@@ -13,14 +13,12 @@ import type { CodeTheme } from "./themes";
  * extension array must be stable across renders or the editor reconfigures on every
  * keystroke.
  */
-function build(c: CodeTheme): Extension[] {
+function build(c: CodeTheme, size: number): Extension[] {
   const theme = EditorView.theme(
     {
       // Transparent throughout: the pane shows the app theme's background, so the two
       // halves of the window are one surface rather than two that nearly match.
-      // Size is inherited rather than set: it is a setting, and baking it in here would
-      // make it part of the cache key and reconfigure the editor to change a number.
-      "&": { color: c.text, backgroundColor: "transparent", fontSize: "inherit" },
+      "&": { color: c.text, backgroundColor: "transparent", fontSize: `${size}px` },
       "&.cm-focused": { outline: "none" },
       ".cm-scroller": {
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -80,11 +78,22 @@ function build(c: CodeTheme): Extension[] {
 
 const cache = new Map<string, Extension[]>();
 
-export function editorTheme(code: CodeTheme): Extension[] {
-  let built = cache.get(code.id);
+/**
+ * Size belongs in here rather than on the element around the editor.
+ *
+ * CodeMirror measures a line once and gives every gutter element that height, so text
+ * scaled underneath it by an inherited `font-size` leaves the numbers behind — by a
+ * pixel a line, which is a whole line by the bottom of a long document. Passing the size
+ * through the theme makes it a reconfiguration, and a reconfiguration is measured again.
+ * The cache key carries it, so the array is still stable across every render that did
+ * not change it.
+ */
+export function editorTheme(code: CodeTheme, size: number): Extension[] {
+  const key = `${code.id}:${size}`;
+  let built = cache.get(key);
   if (!built) {
-    built = build(code);
-    cache.set(code.id, built);
+    built = build(code, size);
+    cache.set(key, built);
   }
   return built;
 }

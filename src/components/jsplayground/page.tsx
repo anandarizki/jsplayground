@@ -28,7 +28,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AboutDialog } from "./about-dialog";
 import { BookmarksDialog } from "./bookmarks-dialog";
 import { ConsoleView } from "./console-view";
-import { GITHUB_URL, MAX_FONT_PX, MIN_FONT_PX } from "./constants";
+import { DEFAULT_FONT_PX, GITHUB_URL, MAX_FONT_PX, MIN_FONT_PX } from "./constants";
 import { Editor } from "./editor";
 import { formatCode } from "./format";
 import { GithubMark } from "./github-mark";
@@ -40,16 +40,25 @@ import { useBookmarks } from "./use-bookmarks";
 import { usePlayground } from "./use-playground";
 import { useSettings } from "./use-settings";
 
-/** The two steps either pane's text takes, bounded so a click that can do nothing says
- *  so rather than doing nothing quietly. */
+/**
+ * The steps either pane's text takes, bounded so a click that can do nothing says so
+ * rather than doing nothing quietly.
+ *
+ * The number between them is the way back: it is the one part of this that has a value
+ * worth reading, and a button that shows what it will undo needs no icon to explain it.
+ * At the default it has nothing to undo, so it reads as a label and stops being a
+ * button.
+ */
 function TextSize({
   size,
   onChange,
+  onReset,
   what,
   className,
 }: {
   size: number;
   onChange: (step: number) => void;
+  onReset: () => void;
   what: string;
   className: string;
 }) {
@@ -63,6 +72,15 @@ function TextSize({
         className={className}
       >
         <AArrowDown size={15} />
+      </button>
+      <button
+        onClick={onReset}
+        disabled={size === DEFAULT_FONT_PX}
+        aria-label={`Reset ${what} text size`}
+        title={`Reset ${what} text size`}
+        className={`${className} w-8 tabular-nums disabled:opacity-100`}
+      >
+        {size}
       </button>
       <button
         onClick={() => onChange(1)}
@@ -151,8 +169,15 @@ export default function JsPlayground() {
 
   const source = (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-hidden" style={{ fontSize: `${settings.editorSize}px` }}>
-        <Editor value={code} onChange={setCode} onRun={runNow} code={palette} className="h-full" />
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <Editor
+          value={code}
+          onChange={setCode}
+          onRun={runNow}
+          code={palette}
+          size={settings.editorSize}
+          className="h-full"
+        />
       </div>
       <div className={paneFooter}>
         {/* The one line this pane has to itself, so a failed format borrows it rather
@@ -164,6 +189,7 @@ export default function JsPlayground() {
           <TextSize
             size={settings.editorSize}
             onChange={(step) => update((previous) => ({ editorSize: previous.editorSize + step }))}
+            onReset={() => update({ editorSize: DEFAULT_FONT_PX })}
             what="editor"
             className={paneButton}
           />
@@ -200,6 +226,7 @@ export default function JsPlayground() {
           <TextSize
             size={settings.consoleSize}
             onChange={(step) => update((previous) => ({ consoleSize: previous.consoleSize + step }))}
+            onReset={() => update({ consoleSize: DEFAULT_FONT_PX })}
             what="output"
             className={paneButton}
           />

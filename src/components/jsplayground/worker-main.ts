@@ -124,6 +124,15 @@ export function workerMain() {
     out.push({ t: t, v: v });
   }
 
+  /** A run of one token. Written this way rather than as a literal so that it goes
+   *  through `push` like everything else — a token the budget cannot see is a token the
+   *  budget is not counting, and there are one or two of them per member. */
+  function one(t: string, v: string) {
+    const out: any[] = [];
+    push(out, t, v);
+    return out;
+  }
+
   function quote(s: string) {
     const clipped = s.length > MAX_STRING ? s.slice(0, MAX_STRING) : s;
     let body = clipped
@@ -398,7 +407,7 @@ export function workerMain() {
   function membersOf(value: any, kind: string, depth: number, seen: any[]) {
     const list: any[] = [];
     const indexKey = function (i: number) {
-      return [{ t: "dim", v: i + ": " }];
+      return one("dim", i + ": ");
     };
 
     if (Array.isArray(value) || (ArrayBuffer.isView(value) && kind !== "DataView")) {
@@ -407,7 +416,7 @@ export function workerMain() {
       for (let i = 0; i < shown; i++) {
         if (spent()) break;
         if (Array.isArray(list_) && !(i in list_)) {
-          list.push(member(indexKey(i), { n: "v", tokens: [{ t: "dim", v: "<empty>" }] }));
+          list.push(member(indexKey(i), { n: "v", tokens: one("dim", "<empty>") }));
         } else {
           list.push(member(indexKey(i), toNode(list_[i], depth + 1, seen)));
         }
@@ -459,7 +468,7 @@ export function workerMain() {
         d = null;
       }
       if (d && (d.get || d.set)) {
-        list.push(member(key, { n: "v", tokens: [{ t: "dim", v: d.get ? "[Getter]" : "[Setter]" }] }));
+        list.push(member(key, { n: "v", tokens: one("dim", d.get ? "[Getter]" : "[Setter]") }));
       } else {
         list.push(member(key, toNode(d ? d.value : undefined, depth + 1, seen)));
       }
@@ -532,7 +541,7 @@ export function workerMain() {
       n: "c",
       preview: preview,
       head: head,
-      tail: [{ t: "punct", v: square ? "]" : "}" }],
+      tail: one("punct", square ? "]" : "}"),
       members: list,
       hidden: Math.max(0, size - list.length),
     };

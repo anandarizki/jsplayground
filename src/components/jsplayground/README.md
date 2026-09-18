@@ -126,6 +126,17 @@ in an installed window that tag is the bar above the app, and a fifth of a secon
 previous theme's colour up there is a visible seam. It is the one piece of chrome a custom
 property cannot reach.
 
+The document is kept too, under `jsplayground:code:1`, as a plain string rather than as
+JSON — it is the whole of the value, and wrapping it would only cost an escape pass each
+way. It is written once typing settles, on a longer wait than the settings use: a document
+is fed by a keystroke stream rather than by the odd click, and nothing reads the stored
+copy until the app is next opened. The same `pagehide` and `visibilitychange` flush the
+settings rely on covers the window closed mid-sentence. Nothing is written until something
+is typed, so someone who opens the app once and touches nothing is not given that day's
+starter for good; once edited, every state is written, including a document typed back to
+exactly what was restored. Reading uses `null` rather than emptiness to mean *nothing
+stored*, so an editor left cleared comes back cleared instead of refilled.
+
 Both hooks read storage in their state initialiser rather than in an effect. Storage is
 synchronous and nothing here is server-rendered, so reading it there costs exactly what
 reading it after mount cost, and saves a render against values that immediately replace

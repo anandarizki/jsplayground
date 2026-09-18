@@ -63,9 +63,12 @@ from, so on a plane it is the same app it is at a desk.
   until you want it.
 - **Completion scoped to the sandbox** — it offers what the worker actually has, not
   `document` and `localStorage`, which are not there.
-- **Everything is remembered** — theme, layout, split, run mode, text sizes, timeout — in
-  `localStorage`, read before the first frame so there is no flash of the wrong theme.
-  Blocked storage costs you a preference, not the app.
+- **Everything is remembered** — the code you left in the editor, and theme, layout,
+  split, run mode, text sizes and timeout with it — in `localStorage`, read before the
+  first frame so there is no flash of the wrong theme and nothing to retype. The document
+  is written once typing settles, and flushed if the tab is hidden or closed first, so
+  shutting the window mid-sentence keeps the sentence. Blocked storage costs you the
+  memory, not the app.
 - **Installable, and offline for real.** A service worker caches the app — Prettier's
   chunks included, so Format works with the network off too — and the browser offers to
   install it. A new version is downloaded but never forced on an open tab: the editor's

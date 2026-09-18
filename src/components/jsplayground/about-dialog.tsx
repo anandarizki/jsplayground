@@ -21,7 +21,8 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         </p>
         <p>
           The whole of it is kept the first time you open it, so it runs with no network at all,
-          and your browser can install it as a window of its own.
+          and your browser can install it as a window of its own. Whatever is in the editor is kept
+          with it, and is here when you come back.
         </p>
       </div>
 

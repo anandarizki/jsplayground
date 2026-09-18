@@ -33,8 +33,8 @@ and has nowhere to say what the alternative is.
 `themes.ts` holds both, and they are deliberately separate.
 
 An **app theme** — Sunny, Calm, Paper, Night, Dusk, Forest — paints every surface: the
-rail, the headers, the footer, the dialogs and both panes alike. A **code theme** — ten of
-them, Plain through Contrast — paints only what is written on them, and the editor's
+rail, the headers, the footer, the dialogs and both panes alike. A **code theme** — twelve
+of them, six a side — paints only what is written on them, and the editor's
 syntax and the console's output both come from it. That is what keeps a string the same
 green whether you are writing it or reading what it printed, and it is why the console's
 tones are named abstractly in the worker: the mapping to a colour cannot be made until
@@ -46,7 +46,8 @@ the brightness filter load-bearing rather than tidy — a code theme has nothing
 but the chrome, so only themes of the app theme's own brightness are offered. Switching
 the app between light and dark carries the code theme to the same slot in the other list
 rather than to a fixed default, so going dark and back again returns the theme you
-started on. `use-settings.ts` holds that invariant, not the dialog, so no caller can
+started on — and the two lists are written so that slot means something: Plain against
+Ink, Meadow against Moss, Mono against Contrast. `use-settings.ts` holds that invariant, not the dialog, so no caller can
 leave the two out of step.
 
 Every colour in the app reads a `--jp-*` custom property set on the root element, which

@@ -265,6 +265,26 @@ export const CODE_THEMES: CodeTheme[] = [
     error: "#be123c",
   },
   {
+    id: "dawn",
+    name: "Dawn",
+    dark: false,
+    text: "#3b2f3a",
+    caret: "#db2777",
+    selection: "#fbd5e8",
+    gutter: "#d8c4d0",
+    gutterActive: "#8a6b7d",
+    activeLine: "#00000006",
+    keyword: "#a21caf",
+    string: "#0f766e",
+    number: "#c2410c",
+    comment: "#b5a3ad",
+    def: "#b45309",
+    property: "#0369a1",
+    type: "#be123c",
+    operator: "#857280",
+    error: "#be123c",
+  },
+  {
     id: "mono",
     name: "Mono",
     dark: false,
@@ -325,24 +345,24 @@ export const CODE_THEMES: CodeTheme[] = [
     error: "#ef4444",
   },
   {
-    id: "orchid",
-    name: "Orchid",
+    id: "moss",
+    name: "Moss",
     dark: true,
-    text: "#ece6f5",
-    caret: "#c084fc",
-    selection: "#4c1d95",
-    gutter: "#453a5c",
-    gutterActive: "#b3a3cc",
+    text: "#dfe9df",
+    caret: "#86efac",
+    selection: "#14532d",
+    gutter: "#3a4a3d",
+    gutterActive: "#a7c0ab",
     activeLine: "#ffffff08",
-    keyword: "#d8b4fe",
-    string: "#86efac",
-    number: "#a5b4fc",
-    comment: "#7e6f99",
-    def: "#f0abfc",
+    keyword: "#a7f3d0",
+    string: "#bef264",
+    number: "#7dd3fc",
+    comment: "#6b7f6e",
+    def: "#fde68a",
     property: "#93c5fd",
-    type: "#f9a8d4",
-    operator: "#a795c4",
-    error: "#fb7185",
+    type: "#fca5a5",
+    operator: "#9bb09e",
+    error: "#f87171",
   },
   {
     id: "neon",
@@ -363,6 +383,26 @@ export const CODE_THEMES: CodeTheme[] = [
     type: "#fb7185",
     operator: "#7fa8bb",
     error: "#ff5470",
+  },
+  {
+    id: "orchid",
+    name: "Orchid",
+    dark: true,
+    text: "#ece6f5",
+    caret: "#c084fc",
+    selection: "#4c1d95",
+    gutter: "#453a5c",
+    gutterActive: "#b3a3cc",
+    activeLine: "#ffffff08",
+    keyword: "#d8b4fe",
+    string: "#86efac",
+    number: "#a5b4fc",
+    comment: "#7e6f99",
+    def: "#f0abfc",
+    property: "#93c5fd",
+    type: "#f9a8d4",
+    operator: "#a795c4",
+    error: "#fb7185",
   },
   {
     id: "contrast",
@@ -387,9 +427,11 @@ export const CODE_THEMES: CodeTheme[] = [
 ];
 
 export const appTheme = (id: string): AppTheme => APP_THEMES.find((t) => t.id === id) ?? APP_THEMES[3];
-export const codeTheme = (id: string): CodeTheme => CODE_THEMES.find((t) => t.id === id) ?? CODE_THEMES[5];
+export const codeTheme = (id: string): CodeTheme =>
+  CODE_THEMES.find((t) => t.id === id) ?? CODE_THEMES.find((t) => t.id === "ink")!;
 
-/** The two halves of `CODE_THEMES`, which are the same length and in the same order. */
+/** The two halves of `CODE_THEMES`: the same length, and written so that each theme sits
+ *  opposite its own counterpart — neutral against neutral, green against green. */
 const LIGHT_CODE = CODE_THEMES.filter((t) => !t.dark);
 const DARK_CODE = CODE_THEMES.filter((t) => t.dark);
 

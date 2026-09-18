@@ -11,6 +11,18 @@
     />
   </head>
   <body>
+    <script>
+      // The first frame belongs to the browser, not to React: a stylesheet cannot read
+      // a preference, so a light theme used to show one frame of the dark default before
+      // the app had drawn anything. `use-settings.ts` writes the chosen background here
+      // under a key of its own — a colour, not a theme id, so this stays a line rather
+      // than a second copy of the palette. No key yet means a first visit, and the
+      // default in `index.css` is already the right answer for that.
+      try {
+        var bg = localStorage.getItem("jsplayground:bg");
+        if (bg) document.documentElement.style.backgroundColor = bg;
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>

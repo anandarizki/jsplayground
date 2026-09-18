@@ -97,9 +97,9 @@ function TextSize({
 }
 
 export default function JsPlayground() {
-  const { settings, update, ready } = useSettings();
+  const { settings, update } = useSettings();
   const { mode, orientation, outputFirst, split } = settings;
-  const { code, setCode, dirty, runNow, runner } = usePlayground(mode, ready, settings.timeout);
+  const { code, setCode, dirty, runNow, runner } = usePlayground(mode, settings.timeout);
   const { bookmarks, add, remove } = useBookmarks();
 
   const app = appTheme(settings.theme);

@@ -46,34 +46,36 @@ function parse(raw: string | null): Bookmark[] {
   return out;
 }
 
+/** Never throws: a private window and a blocked origin both throw on access. */
+function load(): Bookmark[] {
+  try {
+    return parse(window.localStorage.getItem(KEY));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The saved snippets, remembered.
  *
- * Read after mount for the same reason the settings are: a blocked or absent
- * `localStorage` should cost a list and not the first paint. Newest first, because the
- * thing you just saved is the thing you are most likely to want back.
+ * Read in the state initialiser for the same reason the settings are: storage is
+ * synchronous, so reading it there costs what reading it after mount cost and skips the
+ * render against an empty list. Newest first, because the thing you just saved is the
+ * thing you are most likely to want back.
  */
 export function useBookmarks(): {
   bookmarks: Bookmark[];
   add: (title: string, code: string) => void;
   remove: (id: string) => void;
 } {
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const loaded = useRef(false);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(load);
+  const initial = useRef(bookmarks);
 
   useEffect(() => {
-    try {
-      setBookmarks(parse(window.localStorage.getItem(KEY)));
-    } catch {
-      // Private windows and blocked storage both throw on access, not on write.
-    }
-    loaded.current = true;
-  }, []);
-
-  useEffect(() => {
-    // Guarded, or the empty list this starts as would overwrite the stored one in the
-    // gap between mount and the read above.
-    if (!loaded.current) return;
+    // The list as it came out of storage is not written back: that used to happen in the
+    // gap between mount and the read, where the empty list this started as went to
+    // storage first and the real one a tick later.
+    if (bookmarks === initial.current) return;
     try {
       window.localStorage.setItem(KEY, JSON.stringify(bookmarks));
     } catch {

@@ -6,10 +6,12 @@ body,
   height: 100%;
 }
 
-/* The theme is only known once storage has been read, so paint the default one's
-   background here — otherwise the first frame is a white flash. Any other theme covers
-   this with its own full-height background a moment later. Kept in step with the `night`
-   entry in themes.ts by hand; there is no way to read a TS module from CSS. */
+/* The frame before any JavaScript has run, which is the only one a stylesheet can have
+   an opinion about. It is `night`'s background, kept in step with themes.ts by hand;
+   there is no way to read a TS module from CSS, and no way for CSS to read a preference
+   at all. Anyone who has chosen otherwise is covered by the inline script in index.html,
+   which paints the remembered colour over this before the first frame. */
+html,
 body {
   background-color: #0a0a0b;
 }

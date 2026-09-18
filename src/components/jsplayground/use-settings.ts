@@ -41,6 +41,10 @@ export type Settings = {
 const KEY = "jsplayground:settings:2";
 /** The shape before themes had names — read once, to carry a light/dark choice over. */
 const KEY_V1 = "jsplayground:settings:1";
+/** The app background alone, for the inline script in `index.html` that paints the first
+ *  frame. A colour rather than a theme id, so nothing outside this folder has to know
+ *  what a theme is, and unversioned because a colour cannot go out of shape. */
+const BG_KEY = "jsplayground:bg";
 
 const DEFAULTS: Settings = {
   theme: "night",
@@ -117,44 +121,55 @@ function carryOver(raw: string | null): Partial<Settings> {
 }
 
 /**
+ * Everything stored, in the shape the app uses. Never throws: a private window and a
+ * blocked origin both throw on access rather than on write, and a preference is not
+ * worth a blank page.
+ */
+function load(): Settings {
+  let stored: Partial<Settings>;
+  try {
+    const current = window.localStorage.getItem(KEY);
+    stored = current ? parse(current) : carryOver(window.localStorage.getItem(KEY_V1));
+  } catch {
+    return DEFAULTS;
+  }
+  // A stored pair can be mismatched — hand-edited, or carried over from a shape that did
+  // not have the constraint — so the invariant is restored on the way in.
+  const merged = { ...DEFAULTS, ...stored };
+  return { ...merged, code: matchCode(merged.code, appTheme(merged.theme).dark) };
+}
+
+/**
  * The settings, remembered.
  *
- * Storage is read after mount rather than during render, so a blocked or absent
- * `localStorage` costs a preference and not the first paint. `ready` is how callers know
- * the stored values have landed — it is what keeps the first automatic run from firing
- * against defaults that are about to be replaced.
+ * Read in the state initialiser rather than in an effect. Storage is synchronous and
+ * this is a client-rendered app, so reading it there costs exactly what reading it after
+ * mount cost, and saves the render against defaults that immediately replaces itself:
+ * a frame of the wrong theme for anyone on a light one, and a first run that had to wait
+ * to be told whether it was wanted.
  */
 export type Update = (patch: Partial<Settings> | ((previous: Settings) => Partial<Settings>)) => void;
 
 export function useSettings(): {
   settings: Settings;
   update: Update;
-  ready: boolean;
 } {
-  const [settings, setSettings] = useState<Settings>(DEFAULTS);
-  const [ready, setReady] = useState(false);
-  const loaded = useRef(false);
+  const [settings, setSettings] = useState<Settings>(load);
+  // What came out of storage. Writing it straight back would be a write that changes
+  // nothing, and the guard this replaces did not guard: it let the load effect and the
+  // persist effect land in the same commit, so the defaults were written over the stored
+  // values and the stored values written back a tick later.
+  const initial = useRef(settings);
 
   useEffect(() => {
-    let stored: Partial<Settings> = {};
     try {
-      const current = window.localStorage.getItem(KEY);
-      stored = current ? parse(current) : carryOver(window.localStorage.getItem(KEY_V1));
-    } catch {
-      // Private windows and blocked storage both throw on access, not on write.
-    }
-    // A stored pair can be mismatched — hand-edited, or carried over from a shape that
-    // did not have the constraint — so the invariant is restored on the way in.
-    const merged = { ...DEFAULTS, ...stored };
-    setSettings({ ...merged, code: matchCode(merged.code, appTheme(merged.theme).dark) });
-    loaded.current = true;
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!loaded.current) return;
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(settings));
+      // Both writes are conditional, so a session that changes nothing writes nothing.
+      // The background is checked rather than skipped on the first pass: someone whose
+      // settings predate the key would otherwise keep the wrong first frame until the
+      // day they happened to change something.
+      const bg = appTheme(settings.theme).bg;
+      if (window.localStorage.getItem(BG_KEY) !== bg) window.localStorage.setItem(BG_KEY, bg);
+      if (settings !== initial.current) window.localStorage.setItem(KEY, JSON.stringify(settings));
     } catch {
       // Quota or a blocked origin. Losing the preference is not worth an error.
     }
@@ -183,5 +198,5 @@ export function useSettings(): {
     [],
   );
 
-  return { settings, update, ready };
+  return { settings, update };
 }

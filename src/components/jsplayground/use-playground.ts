@@ -17,11 +17,11 @@ export type Playground = {
  * The document and when it runs. The settings that drive it live in `useSettings`,
  * because they outlive the session and this does not.
  *
- * `ready` gates the first automatic run: the stored mode arrives one tick after mount,
- * and running against the default in the meantime would burn a worker on a setting the
- * user turned off weeks ago.
+ * There is no gate on the first run any more. The stored mode used to arrive a tick
+ * after mount, so this had to wait to be told whether a run was wanted at all; it is
+ * read before the first render now, and `mode` is right the first time it is seen.
  */
-export function usePlayground(mode: RunMode, ready: boolean, timeout: number): Playground {
+export function usePlayground(mode: RunMode, timeout: number): Playground {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [ranAt, setRanAt] = useState(DEFAULT_CODE);
   const runner = useRunner(timeout);
@@ -37,22 +37,28 @@ export function usePlayground(mode: RunMode, ready: boolean, timeout: number): P
     runRef.current(codeRef.current);
   }, []);
 
-  // Debounce keystrokes, but not the switch into live mode: turning it on is itself
-  // the request for a result, and waiting out the debounce would read as a dead button.
+  // Debounce keystrokes, but not the first run and not the switch into live mode. The
+  // debounce is there to wait out typing; on arrival there has been none, and turning
+  // live mode on is itself the request for a result — waiting either of those out reads
+  // as an app that has not started yet.
   const wasMode = useRef(mode);
+  const ranOnce = useRef(false);
   useEffect(() => {
     const justSwitched = wasMode.current !== mode;
     wasMode.current = mode;
-    if (!ready || mode !== "auto") return;
+    if (mode !== "auto") return;
     const timer = window.setTimeout(
       () => {
+        // Marked here rather than where the timer is set, so a run that was cleared
+        // before it fired does not count as the one that has already happened.
+        ranOnce.current = true;
         setRanAt(code);
         runRef.current(code);
       },
-      justSwitched ? 0 : DEBOUNCE_MS,
+      !ranOnce.current || justSwitched ? 0 : DEBOUNCE_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [code, mode, ready]);
+  }, [code, mode]);
 
   return { code, setCode, dirty: code !== ranAt, runNow, runner };
 }

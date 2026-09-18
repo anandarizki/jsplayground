@@ -66,9 +66,9 @@ whole window, which put a run's duration as far from the output it measured as t
 layout allowed.
 
 Saved snippets live in `use-bookmarks.ts`, under their own versioned storage key and
-read after mount for the same reason the settings are: blocked storage should cost a
-list, not the first paint. Nothing that comes back is trusted — an entry without both a
-title and a body is dropped rather than repaired into a blank row. The examples are not
+read in the state initialiser for the same reason the settings are. Nothing that comes
+back is trusted — an entry without both a title and a body is dropped rather than
+repaired into a blank row. The examples are not
 stored at all, so no amount of deleting can lose them.
 
 At the foot of the rail, away from anything that touches the code: **settings**, the
@@ -111,8 +111,20 @@ leave the two out of step.
 Every colour in the app reads a `--jp-*` custom property set on the root element, which
 is the only reason a theme can be a value picked at runtime rather than a second set of
 classes written beside the first. The one duplicate is the `body` background in
-`index.css`: the theme is not known until storage has been read, and something has to be
-painted before that, so it repeats `night`'s background by hand.
+`index.css`, which repeats `night`'s by hand: something has to be painted before any
+script has run, and a stylesheet cannot read a preference. What it can be told is a
+colour, so `use-settings.ts` writes the chosen background under a key of its own and a
+line in `index.html` paints it — which is why choosing Sunny no longer costs a frame of
+Night on every reload.
+
+Both hooks read storage in their state initialiser rather than in an effect. Storage is
+synchronous and nothing here is server-rendered, so reading it there costs exactly what
+reading it after mount cost, and saves a render against values that immediately replace
+themselves — along with the wrong theme for a frame, and a first run that had to be told
+it was wanted before it could start. The guards that used to hold the persist effect off
+until the load effect had run did not, in fact, guard: both landed in the same commit, so
+the defaults were written over what was stored and what was stored written back a tick
+later. There is no gap to guard now, and a session that changes nothing writes nothing.
 
 ## How it runs your code
 

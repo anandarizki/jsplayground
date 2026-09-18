@@ -5,29 +5,33 @@ type Props = {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  /** Whether the close button takes focus on open. Off for a dialog with a field in
+   *  it, which wants the caret instead — a child's effect cannot win this, since
+   *  children's effects run before the parent's. */
+  autoFocus?: boolean;
 };
 
 /**
- * The shell both dialogs sit in.
+ * The shell every dialog sits in.
  *
  * Rendered inside the app's root rather than in a portal, which is what puts it inside
  * the element carrying the theme's custom properties — a portalled dialog would land on
  * `document.body` and inherit none of them.
  */
-export function Dialog({ title, onClose, children }: Props) {
+export function Dialog({ title, onClose, children, autoFocus = true }: Props) {
   const close = useRef<HTMLButtonElement | null>(null);
   const titleId = useId();
 
   useEffect(() => {
     // Opened from a button the pointer is already on, so focus has to be moved by hand
     // for Escape and Tab to reach the dialog at all.
-    close.current?.focus();
+    if (autoFocus) close.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [autoFocus, onClose]);
 
   return (
     <div

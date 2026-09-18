@@ -1,4 +1,4 @@
-/** Timings and starter code. All of it is tuned for judging, not for production. */
+/** Timings, sizes and starter code. All of it is tuned for judging, not for production. */
 
 /** How long the top-level code may run before the worker is killed. An unbounded
  *  loop never yields, so this watchdog is the only thing that can stop one. This is the
@@ -18,6 +18,13 @@ export const ASYNC_IDLE_MS = 2500;
 
 /** An absolute lid on the above, so a `setInterval` cannot keep a worker alive. */
 export const ASYNC_CEILING_MS = 15000;
+
+/** The size both panes' text starts at, and how far either one can be taken from it.
+ *  The floor is where a monospace grid stops being readable; the ceiling is where one
+ *  pane's line has room for too little to be worth reading. */
+export const DEFAULT_FONT_PX = 13;
+export const MIN_FONT_PX = 10;
+export const MAX_FONT_PX = 24;
 
 /** Quiet time after the last keystroke before an automatic run. */
 export const DEBOUNCE_MS = 700;

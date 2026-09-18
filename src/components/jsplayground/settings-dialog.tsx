@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react";
 import { MAX_TIMEOUT_MS, MIN_TIMEOUT_MS } from "./constants";
 import { Dialog } from "./dialog";
 import { APP_THEMES, appTheme, codeTheme, codeThemesFor } from "./themes";
-import type { Settings } from "./use-settings";
+import type { Settings, Update } from "./use-settings";
 
 const TABS = ["Theme", "Layout", "Console", "Running"] as const;
 type Tab = (typeof TABS)[number];
@@ -137,7 +137,7 @@ function Toggle({
 
 type Props = {
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
   /** Swapping has to move each pane's size with it, which is more than a field can say. */
   onSwap: () => void;
   onClose: () => void;

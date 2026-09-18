@@ -18,7 +18,9 @@ function build(c: CodeTheme): Extension[] {
     {
       // Transparent throughout: the pane shows the app theme's background, so the two
       // halves of the window are one surface rather than two that nearly match.
-      "&": { color: c.text, backgroundColor: "transparent", fontSize: "13px" },
+      // Size is inherited rather than set: it is a setting, and baking it in here would
+      // make it part of the cache key and reconfigure the editor to change a number.
+      "&": { color: c.text, backgroundColor: "transparent", fontSize: "inherit" },
       "&.cm-focused": { outline: "none" },
       ".cm-scroller": {
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",

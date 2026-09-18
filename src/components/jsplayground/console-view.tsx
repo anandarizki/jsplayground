@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
+import { DEFAULT_FONT_PX } from "./constants";
 import type { Entry, Member, Printed, Token, Tone } from "./types";
 
 /**
@@ -131,6 +132,8 @@ type Props = {
   colour?: boolean;
   /** Whether containers arrive open. */
   openByDefault?: boolean;
+  /** Text size in pixels. Everything inside is sized in `em`, so this scales the lot. */
+  size?: number;
 };
 
 export function ConsoleView({
@@ -139,6 +142,7 @@ export function ConsoleView({
   hint = "console.log(…) to print something here.",
   colour = true,
   openByDefault = false,
+  size = DEFAULT_FONT_PX,
 }: Props) {
   const scroller = useRef<HTMLDivElement | null>(null);
 
@@ -151,7 +155,8 @@ export function ConsoleView({
     <Options value={{ colour, openByDefault }}>
       <div
         ref={scroller}
-        className={`overflow-auto font-mono text-[13px] leading-relaxed text-[var(--jp-code-text)] ${className ?? ""}`}
+        style={{ fontSize: `${size}px` }}
+        className={`overflow-auto font-mono leading-relaxed text-[var(--jp-code-text)] ${className ?? ""}`}
       >
         {entries.length === 0 ? (
           <p className="px-4 py-4 text-[var(--jp-faint)]">{hint}</p>
@@ -211,7 +216,7 @@ export function ConsoleView({
                   {entry.deferred ? (
                     <span
                       title="printed after the top-level code finished"
-                      className="mt-0.5 shrink-0 text-[10px] tracking-wide text-[var(--jp-faint)] uppercase"
+                      className="mt-0.5 shrink-0 text-[0.77em] tracking-wide text-[var(--jp-faint)] uppercase"
                     >
                       late
                     </span>

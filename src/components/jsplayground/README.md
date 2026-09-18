@@ -10,17 +10,60 @@ carries each pane's size with it, so the one you made tall stays tall. It opens 
 columns — source left, output right — in dark, and `use-settings.ts` remembers whatever
 you change it to.
 
-The left rail holds the two controls you reach for while writing, which is why the panes
-carry no chrome of their own:
+The left rail holds the two controls that act on the session as a whole:
 
-- **Play** — a toggle, not a trigger. Lit means live: the code re-runs as you type,
-  debounced. Unlit means the result is frozen, and an amber dot on the button says the
-  code has moved on since the result you are looking at. `⌘↵` runs once either way.
-- **Eraser** — clear the output.
+- **Play** — a toggle, not a trigger, and the glyph is what says which way it is set. A
+  square means live: the code re-runs as you type, debounced, and pressing it stops that.
+  A triangle means the result is frozen, and an amber dot on it says the code has moved on
+  since the result you are looking at. `⌘↵` runs once either way. A run in flight takes
+  the slot over — the same square in the error colour, which kills the worker rather than
+  changing when the next run happens.
+- **Bookmark** — the shelf: what you saved, then the examples that shipped. The examples
+  used to sit as bare labels above the source, where they read as part of the
+  document rather than as a way out of it; a list also has room for each snippet's
+  opening line, which is the only thing that says what you are about to load over your
+  own code.
+
+Everything else belongs to one pane, and each pane carries a single line along its
+bottom: what it has to say on the left, what you can do to it on the right. Nothing sits
+above a pane and nothing spans both, so the app has no bar of its own and the panes meet
+the top edge.
+
+Each line also carries its pane's text size, as two steps between 10 and 24 px, bounded
+so a click that can do nothing is disabled rather than silently ignored. The two sizes
+are separate settings: reading a wide printed structure and writing the line that made it
+are not the same job, and a screen you have leaned back from may want only one of them
+bigger. The editor inherits its size from the pane rather than declaring one, which is
+why changing it does not rebuild the CodeMirror theme; the output is sized in `em`
+throughout, so everything inside it scales together.
+
+The source line says when the code will run — `runs as you type`, or `⌘↵ to run` when
+the play button is unlit — and holds **format** and **save**. Format is Prettier,
+imported on the click rather than at the top of the file, because the parser and printer
+together are the largest thing here and most sessions never press it; code that does not
+parse cannot be formatted, so that same line says `cannot format` for a moment and the
+output pane gives the real error on the next run. Save names what is in the editor and
+puts it at the top of the shelf.
+
+The output line is the status — `ready`, `running…`, how long the last run took, or why
+it stopped — and holds the **eraser**. Both of those were a strip across the foot of the
+whole window, which put a run's duration as far from the output it measured as the
+layout allowed.
+
+Saved snippets live in `use-bookmarks.ts`, under their own versioned storage key and
+read after mount for the same reason the settings are: blocked storage should cost a
+list, not the first paint. Nothing that comes back is trusted — an entry without both a
+title and a body is dropped rather than repaired into a blank row. The examples are not
+stored at all, so no amount of deleting can lose them.
 
 At the foot of the rail, away from anything that touches the code: **settings**, the
-source on **GitHub**, and **about**. Both dialogs render inside the app's root rather
-than in a portal, so the `group` carrying `dark` is still above them.
+source on **GitHub**, and **about**. Every dialog renders inside the app's root rather
+than in a portal, so the element carrying the theme's custom properties is still above them.
+
+`update` in `use-settings.ts` takes a function of the current settings as well as a
+plain patch, which is what makes a step correct when two clicks land inside one render:
+an object patch carries the size the button was drawn with, so the second click would
+only repeat the first.
 
 Settings is where the rest lives, in four tabs — Theme, Layout, Console, Running — because
 a theme is chosen once and a timeout is changed while something is misbehaving, and one
@@ -33,7 +76,7 @@ and has nowhere to say what the alternative is.
 `themes.ts` holds both, and they are deliberately separate.
 
 An **app theme** — Sunny, Calm, Paper, Night, Dusk, Forest — paints every surface: the
-rail, the headers, the footer, the dialogs and both panes alike. A **code theme** — twelve
+rail, the pane status lines, the dialogs and both panes alike. A **code theme** — twelve
 of them, six a side — paints only what is written on them, and the editor's
 syntax and the console's output both come from it. That is what keeps a string the same
 green whether you are writing it or reading what it printed, and it is why the console's
@@ -102,4 +145,5 @@ Error line numbers are mapped back to the editor's own numbering by measuring th
 
 This folder is self-contained. `index.tsx` is its only public file; everything else
 is private and free to change. It imports nothing from outside itself apart from React,
-CodeMirror and `lucide-react`, which is what makes it droppable into another app as is.
+CodeMirror, `lucide-react` and Prettier — the last of those only inside a dynamic import,
+so an app that drops this folder in pays for it on a click and not on load.

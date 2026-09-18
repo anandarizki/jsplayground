@@ -12,3 +12,12 @@ body,
 body {
   background-color: var(--color-zinc-950);
 }
+
+/* Tailwind 4's preflight leaves buttons on the default cursor. Every control in this
+   app is a button, and they should all read as clickable. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}

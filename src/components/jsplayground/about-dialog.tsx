@@ -65,7 +65,7 @@ export function AboutDialog({ onClose }: Props) {
             survivable — a watchdog stops the thread after {RUN_TIMEOUT_MS / 1000} seconds, and every run
             gets a fresh worker so nothing leaks from one into the next. Output is formatted rather than
             stringified: Maps, Sets, circular references, sparse arrays and getters each print as
-            themselves.
+            themselves, and anything with members inside it opens where it sits.
           </p>
           <p>
             Press <kbd className="font-mono text-zinc-500 group-[.dark]:text-zinc-400">⌘↵</kbd> to run once,

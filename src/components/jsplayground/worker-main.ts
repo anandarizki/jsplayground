@@ -17,9 +17,7 @@ export function workerMain() {
   const MAX_STRING = 4000; // characters of any one string
   const MAX_DEPTH = 4; // nesting levels before "{…}"
   const MAX_ITEMS = 100; // array/object/map members
-  const INLINE_WIDTH = 72; // a container wider than this collapses behind a toggle
-  const PREVIEW_WIDTH = 96; // characters of a collapsed container's summary line
-  const NEST = 2; // columns the view indents each open level by
+  const PREVIEW_WIDTH = 96; // characters of a shut container's summary line
   const MAX_NODES = 4000; // members serialised per console call
 
   const scope: any = self;
@@ -69,17 +67,6 @@ export function workerMain() {
 
   function isIdent(key: string) {
     return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key);
-  }
-
-  /** Printed width of one member, or Infinity once it has broken over lines itself —
-   *  a container holding a broken member has to break too, whatever its own width. */
-  function measure(tokens: any[]) {
-    let n = 0;
-    for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i].v.indexOf("\n") !== -1) return Infinity;
-      n += tokens[i].v.length;
-    }
-    return n;
   }
 
   /** Cut a token run down to `width`, marking the cut. Previews are one line whatever
@@ -361,10 +348,12 @@ export function workerMain() {
    * One console argument, as something the view can render.
    *
    * Two shapes come out of here. `v` is a run of tokens and prints as itself; `c` opens,
-   * and carries a one-line summary plus its members. Which one a value gets is decided
-   * by width alone: anything that fits on a line stays on the line, because a disclosure
-   * triangle on `{ a: 1 }` is a click that buys nothing. Everything wider collapses —
-   * the whole point being that a huge object costs one line until it is asked for.
+   * and carries a one-line summary plus its members. Anything with members to show gets
+   * the second shape whatever its width, so a value's controls do not depend on how wide
+   * it happens to print — the summary is what you read, and opening is always there.
+   *
+   * The one exception is a container with nothing in it: `{}` and `[]` print as
+   * themselves, because a triangle that opens onto nothing is a broken promise.
    *
    * Members are serialised eagerly, because there is no asking the worker later: it is
    * terminated once the run settles. That is what MAX_DEPTH, MAX_ITEMS and MAX_NODES
@@ -383,13 +372,8 @@ export function workerMain() {
       return flat();
     }
 
-    // Wide containers skip the inline attempt: rendering one only to measure it and
-    // throw it away is the expensive half of formatting a big value.
     const size = count(value, kind);
-    if (size <= 16) {
-      const inline = flat();
-      if (measure(inline.tokens) <= Math.max(24, INLINE_WIDTH - depth * NEST)) return inline;
-    }
+    if (size === 0) return flat();
 
     const preview: any[] = [];
     // Length first, because a shut array's summary is truncated long before its end and

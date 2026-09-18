@@ -34,10 +34,11 @@ Every control is in the left rail, which is why the panes carry no chrome of the
   late `setTimeout` output with a 15 s ceiling.
 - `console-view.tsx` — the formatter's output. The worker serialises to abstract
   tones; the mapping to colour lives here, next to the editor's palette.
-- Wide values open rather than wrap. A container that fits in 72 columns prints on the
-  line — a disclosure triangle on `{ a: 1 }` is a click that buys nothing — and anything
-  wider collapses to a one-line summary the view can open, its members following the
-  same rule one level down. The tree is serialised up front, because the worker is
+- Values open rather than wrap. Anything with members to show prints as a one-line
+  summary with a disclosure triangle, whatever its width — a value's controls should not
+  depend on how wide it happens to print, and the summary is what you read either way.
+  The exception is `{}` and `[]`, which stay as they are: a triangle that opens onto
+  nothing is a broken promise. The tree is serialised up front, because the worker is
   terminated once the run settles and there is nobody left to ask for the next level;
   `MAX_DEPTH`, `MAX_ITEMS` and `MAX_NODES` are what bound that. Open state lives in the
   row that owns it, so a new run starts everything shut.

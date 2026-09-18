@@ -117,6 +117,17 @@ painted before that, so it repeats `night`'s background by hand.
   late `setTimeout` output with a 15 s ceiling. The watchdog's limit is a setting,
   between 100 ms and 5 s. The ceiling is not: it is what stops a `setInterval` holding
   a thread open until the tab closes, which is not a preference.
+- `validate.ts` — the sandbox is not the only thing that can talk on the channel back
+  to the page: the code it is running holds the same `postMessage`, and
+  `postMessage({ t: "log", parts: null })` is one line. So nothing arriving is trusted.
+  Every message is re-checked in the shape the view expects and dropped whole if it is
+  not one — repairing half an entry is how a validator turns into a second parser — and
+  the pane says so once per run rather than once per message.
+- `error-boundary.tsx` — the guard behind that, for whatever the checking misses. A
+  render that throws unmounts the React root, and here the root is the app, so one bad
+  row would otherwise cost the editor and everything typed into it. Contained, it costs
+  one pane, and the eraser gives it back: the boundary is keyed on a counter the runner
+  bumps whenever the output is replaced.
 - `console-view.tsx` — the formatter's output. The worker serialises to abstract
   tones; the mapping to colour lives here, next to the editor's palette.
 - Values open rather than wrap. Anything with members to show prints as a one-line

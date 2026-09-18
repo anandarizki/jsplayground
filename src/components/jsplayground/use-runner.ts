@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ASYNC_CEILING_MS, ASYNC_IDLE_MS } from "./constants";
-import type { Entry, RunStatus, WorkerMessage } from "./types";
+import type { Entry, RunStatus } from "./types";
+import { checkMessage } from "./validate";
 import { WORKER_SOURCE } from "./worker-main";
 
 export type Runner = {
@@ -12,6 +13,10 @@ export type Runner = {
   run: (code: string) => void;
   cancel: () => void;
   clear: () => void;
+  /** Bumped whenever the output is replaced wholesale — a new run, or the eraser. What
+   *  the error boundary around the console is keyed on, so a row that could not be drawn
+   *  stops being a broken pane the moment it is gone. */
+  generation: number;
 };
 
 const supported = () =>
@@ -30,6 +35,7 @@ export function useRunner(timeout: number): Runner {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [status, setStatus] = useState<RunStatus>("idle");
   const [ms, setMs] = useState<number | null>(null);
+  const [generation, setGeneration] = useState(0);
 
   const worker = useRef<Worker | null>(null);
   const blobUrl = useRef<string | null>(null);
@@ -37,6 +43,7 @@ export function useRunner(timeout: number): Runner {
   const idle = useRef<number | null>(null);
   const ceiling = useRef<number | null>(null);
   const settled = useRef(false);
+  const refused = useRef(false);
   const seq = useRef(0);
 
   const id = () => (seq.current += 1);
@@ -75,7 +82,9 @@ export function useRunner(timeout: number): Runner {
       setEntries([]);
       setMs(null);
       setStatus("running");
+      setGeneration((n) => n + 1);
       settled.current = false;
+      refused.current = false;
 
       if (!blobUrl.current) {
         blobUrl.current = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: "text/javascript" }));
@@ -90,8 +99,19 @@ export function useRunner(timeout: number): Runner {
         idle.current = window.setTimeout(kill, ASYNC_IDLE_MS);
       };
 
-      w.onmessage = (event: MessageEvent<WorkerMessage>) => {
-        const msg = event.data;
+      w.onmessage = (event: MessageEvent) => {
+        // The sandbox is not the only thing that can post on this channel: the code it
+        // is running holds the same `postMessage`. So the message is checked rather than
+        // destructured, and one that is not a message this console can draw is dropped —
+        // said once, so a loop posting rubbish cannot fill the pane with complaints.
+        const msg = checkMessage(event.data);
+        if (!msg) {
+          if (!refused.current) {
+            refused.current = true;
+            append({ kind: "notice", id: id(), text: "The sandbox sent a message this console cannot show." });
+          }
+          return;
+        }
         switch (msg.t) {
           case "log":
             append({ kind: "log", id: id(), level: msg.level, parts: msg.parts, deferred: settled.current });
@@ -172,6 +192,7 @@ export function useRunner(timeout: number): Runner {
     setEntries([]);
     setMs(null);
     setStatus("idle");
+    setGeneration((n) => n + 1);
   }, []);
 
   useEffect(
@@ -183,5 +204,5 @@ export function useRunner(timeout: number): Runner {
     [kill],
   );
 
-  return { entries, status, ms, run, cancel, clear };
+  return { entries, status, ms, run, cancel, clear, generation };
 }

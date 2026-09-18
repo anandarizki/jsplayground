@@ -30,6 +30,7 @@ import { BookmarksDialog } from "./bookmarks-dialog";
 import { ConsoleView } from "./console-view";
 import { DEFAULT_FONT_PX, GITHUB_URL, MAX_FONT_PX, MIN_FONT_PX } from "./constants";
 import { Editor } from "./editor";
+import { ErrorBoundary } from "./error-boundary";
 import { formatCode } from "./format";
 import { GithubMark } from "./github-mark";
 import { SaveBookmarkDialog } from "./save-bookmark-dialog";
@@ -212,14 +213,29 @@ export default function JsPlayground() {
 
   const output = (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <ConsoleView
-        entries={runner.entries}
-        className="flex-1"
-        hint="› output appears here"
-        colour={settings.consoleColor}
-        openByDefault={settings.consoleOpen}
-        size={settings.consoleSize}
-      />
+      {/* Keyed on the generation so the eraser and the next run both give the boundary
+          a fresh instance: the row it could not draw is gone, and the pane should not go
+          on saying otherwise. */}
+      <ErrorBoundary
+        key={runner.generation}
+        fallback={
+          <p
+            className="flex-1 overflow-auto px-4 py-4 font-mono text-[var(--jp-error)]"
+            style={{ fontSize: `${settings.consoleSize}px` }}
+          >
+            The output could not be drawn. Erase it to continue.
+          </p>
+        }
+      >
+        <ConsoleView
+          entries={runner.entries}
+          className="flex-1"
+          hint="› output appears here"
+          colour={settings.consoleColor}
+          openByDefault={settings.consoleOpen}
+          size={settings.consoleSize}
+        />
+      </ErrorBoundary>
       <div className={paneFooter}>
         <span className={statusTone(runner)}>{statusLabel(runner)}</span>
         <div className="-mr-1.5 flex items-center gap-0.5">

@@ -19,6 +19,10 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
           stopped, and nothing one run leaves behind reaches the next. It never leaves this tab —
           there is nowhere for it to be sent.
         </p>
+        <p>
+          The whole of it is kept the first time you open it, so it runs with no network at all,
+          and your browser can install it as a window of its own.
+        </p>
       </div>
 
       <p className="mt-5 border-t border-[var(--jp-border)] pt-4 font-mono text-[11px] text-[var(--jp-faint)]">

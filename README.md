@@ -4,7 +4,8 @@ A JavaScript scratchpad in two panes: the source in one, whatever it printed in 
 It runs your code as you type, in a Web Worker that can be killed — so `while (true) {}` is
 something you try rather than something you recover from.
 
-**[Open it →](https://jsplayground.rizki.id)** · no account, no build step, nothing to install.
+**[Open it →](https://jsplayground.rizki.id)** · no account, no build step, no network once
+it has loaded — and installable, if you would rather it were a window than a tab.
 
 ![The editor on the left, the output on the right: arrays, a Map, a Set, a regexp, a BigInt, a sparse array, an expandable object tree, a circular reference, a console timer, a warning, a syntax error with its line number, and a late line from a setTimeout.](docs/screenshot-dark.webp)
 
@@ -14,6 +15,8 @@ Plenty of scratchpads send your code to a server, and plenty run it on the same 
 the page. The first needs a network and a round trip; the second means one bad loop takes
 the tab with it. This one runs everything locally, in a worker, which is what lets it do
 two things at once: re-run on every keystroke, **and** survive code that never returns.
+Running locally is also what makes it worth installing: there is no server to be cut off
+from, so on a plane it is the same app it is at a desk.
 
 ## What it does
 
@@ -63,11 +66,35 @@ two things at once: re-run on every keystroke, **and** survive code that never r
 - **Everything is remembered** — theme, layout, split, run mode, text sizes, timeout — in
   `localStorage`, read before the first frame so there is no flash of the wrong theme.
   Blocked storage costs you a preference, not the app.
+- **Installable, and offline for real.** A service worker caches the app — Prettier's
+  chunks included, so Format works with the network off too — and the browser offers to
+  install it. A new version is downloaded but never forced on an open tab: the editor's
+  buffer lives in memory, and reloading under you would be reloading over your work.
 
 | | |
 |---|---|
 | ![The same app in the Paper theme with the Sepia palette: a cream window, warm syntax colours.](docs/screenshot-light.webp) | ![The settings dialog, Theme tab: six app themes as tiles wearing their own colours, and six code themes below.](docs/screenshot-themes.webp) |
 | Light themes are first-class, not an afterthought | Twelve code palettes, paired to the app theme |
+
+## Installing it, and using it offline
+
+It is a PWA, so the browser will keep the whole app — Prettier included — the first time
+you open it. After that visit it needs no network at all: open it on a plane and it is the
+app it was at your desk.
+
+To give it a window of its own:
+
+- **Chrome, Edge, Brave (desktop)** — click the install icon at the right-hand end of the
+  address bar, or ⋮ → *Cast, save and share* → *Install page as app*.
+- **Safari (macOS)** — *File* → *Add to Dock*.
+- **Safari (iOS/iPadOS)** — *Share* → *Add to Home Screen*.
+- **Chrome (Android)** — ⋮ → *Add to Home screen* → *Install*.
+
+Firefox on desktop has no install of its own; the offline half works there regardless.
+
+Updates are downloaded in the background and never applied to a tab you are working in —
+the editor's contents live in memory as well as in storage, and a reload you did not ask
+for is a reload over your work. Close the app and open it again to pick up a new version.
 
 ## Running it
 
@@ -79,6 +106,9 @@ npm run dev      # http://localhost:5173
 `npm run build` type-checks and builds; `npm run lint` runs ESLint. React 19, TypeScript,
 Vite, CodeMirror 6 and Tailwind 4 — no state library, no test framework, no backend.
 
+The service worker is built, not served by the dev server, so `npm run dev` has none of it:
+offline and installing are things to try against `npm run preview`.
+
 ## How it is put together
 
 The whole app is one self-contained folder,
@@ -86,6 +116,11 @@ The whole app is one self-contained folder,
 does nothing else. Drop the folder into another React app and it works; its only imports
 from outside itself are React, CodeMirror, `lucide-react` and Prettier, the last behind a
 dynamic import.
+
+Being installable is the one thing that is not in the folder, because it cannot be: a
+service worker, a manifest and a set of icons belong to an origin rather than to a
+component. They live in `vite.config.ts` (`vite-plugin-pwa`), `index.html` and `public/`,
+and dropping the folder into another app carries the playground without them.
 
 [**Its README**](src/components/jsplayground/README.md) is the design document: how the
 sandbox is built and stringified into a blob worker, why the output is a tree rather than

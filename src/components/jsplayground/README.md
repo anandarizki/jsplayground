@@ -120,7 +120,11 @@ classes written beside the first. The one duplicate is the `body` background in
 script has run, and a stylesheet cannot read a preference. What it can be told is a
 colour, so `use-settings.ts` writes the chosen background under a key of its own and a
 line in `index.html` paints it — which is why choosing Sunny no longer costs a frame of
-Night on every reload.
+Night on every reload. The same colour is written to the `theme-color` meta tag whenever
+the theme changes, on its own effect rather than on the debounce that persists settings:
+in an installed window that tag is the bar above the app, and a fifth of a second of the
+previous theme's colour up there is a visible seam. It is the one piece of chrome a custom
+property cannot reach.
 
 Both hooks read storage in their state initialiser rather than in an effect. Storage is
 synchronous and nothing here is server-rendered, so reading it there costs exactly what

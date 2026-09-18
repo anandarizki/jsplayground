@@ -165,6 +165,15 @@ export function useSettings(): {
   // values and the stored values written back a tick later.
   const initial = useRef(settings);
 
+  // The colour of the system bar above an installed window, which the browser reads from
+  // the meta tag rather than from the manifest once the app is running. Written on every
+  // theme change, not on the debounce that persists settings: a bar left on the previous
+  // theme's colour for a fifth of a second is a visible seam at the top of the app.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    meta?.setAttribute("content", appTheme(settings.theme).bg);
+  }, [settings.theme]);
+
   useEffect(() => {
     let written = false;
     const save = () => {

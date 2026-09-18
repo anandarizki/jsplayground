@@ -46,6 +46,10 @@ const KEY_V1 = "jsplayground:settings:1";
  *  what a theme is, and unversioned because a colour cannot go out of shape. */
 const BG_KEY = "jsplayground:bg";
 
+/** How long a burst of changes settles before it is written. A divider drag is a change
+ *  a frame, and every one of them was a `JSON.stringify` and a synchronous write. */
+const PERSIST_MS = 200;
+
 const DEFAULTS: Settings = {
   theme: "night",
   code: "ink",
@@ -162,17 +166,38 @@ export function useSettings(): {
   const initial = useRef(settings);
 
   useEffect(() => {
-    try {
-      // Both writes are conditional, so a session that changes nothing writes nothing.
-      // The background is checked rather than skipped on the first pass: someone whose
-      // settings predate the key would otherwise keep the wrong first frame until the
-      // day they happened to change something.
-      const bg = appTheme(settings.theme).bg;
-      if (window.localStorage.getItem(BG_KEY) !== bg) window.localStorage.setItem(BG_KEY, bg);
-      if (settings !== initial.current) window.localStorage.setItem(KEY, JSON.stringify(settings));
-    } catch {
-      // Quota or a blocked origin. Losing the preference is not worth an error.
-    }
+    let written = false;
+    const save = () => {
+      if (written) return;
+      written = true;
+      try {
+        // Both writes are conditional, so a session that changes nothing writes nothing.
+        // The background is checked rather than skipped on the first pass: someone whose
+        // settings predate the key would otherwise keep the wrong first frame until the
+        // day they happened to change something.
+        const bg = appTheme(settings.theme).bg;
+        if (window.localStorage.getItem(BG_KEY) !== bg) window.localStorage.setItem(BG_KEY, bg);
+        if (settings !== initial.current) window.localStorage.setItem(KEY, JSON.stringify(settings));
+      } catch {
+        // Quota or a blocked origin. Losing the preference is not worth an error.
+      }
+    };
+
+    // Waited out rather than written at once, so a two-second drag costs one write
+    // instead of a hundred and twenty. The tab can be closed or hidden inside that
+    // window, though, and neither event will wait for anything asynchronous — which is
+    // the reason this write is a synchronous one in the first place.
+    const timer = window.setTimeout(save, PERSIST_MS);
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") save();
+    };
+    window.addEventListener("pagehide", save);
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pagehide", save);
+      document.removeEventListener("visibilitychange", onHidden);
+    };
   }, [settings]);
 
   // A patch may be a function of what is already there, which is what makes a step

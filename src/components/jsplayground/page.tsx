@@ -112,29 +112,61 @@ export default function JsPlayground() {
   const [unformattable, setUnformattable] = useState(false);
 
   const frame = useRef<HTMLDivElement | null>(null);
-  const dragging = useRef(false);
   const columns = orientation === "columns";
 
-  useEffect(() => {
-    const move = (event: MouseEvent) => {
-      if (!dragging.current || !frame.current) return;
+  /**
+   * The divider, dragged.
+   *
+   * Pointer events rather than mouse events, and only while the gesture is happening.
+   * The window used to carry a `mousemove` listener for the whole session in order to
+   * serve something that lasts a second — and a mouse is not the only thing that drags,
+   * so touch and pen could not move it at all. Capturing the pointer on the handle is
+   * what lets it keep receiving moves when the cursor outruns a one-pixel target, and it
+   * is why these listeners go on the handle rather than on the window.
+   */
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const handle = event.currentTarget;
+    const sideways = columns;
+    handle.setPointerCapture(event.pointerId);
+    document.body.style.userSelect = "none";
+
+    // One update a frame. A pointer reports faster than the screen draws, and every
+    // report was a state change, a re-render of the whole app and a write to storage.
+    let at: { x: number; y: number } | null = null;
+    let queued = 0;
+    const apply = () => {
+      queued = 0;
+      const point = at;
+      at = null;
+      if (!point || !frame.current) return;
       const box = frame.current.getBoundingClientRect();
-      const pct = columns
-        ? ((event.clientX - box.left) / box.width) * 100
-        : ((event.clientY - box.top) / box.height) * 100;
+      const pct = sideways
+        ? ((point.x - box.left) / box.width) * 100
+        : ((point.y - box.top) / box.height) * 100;
       update({ split: Math.min(88, Math.max(12, pct)) });
     };
-    const up = () => {
-      dragging.current = false;
+
+    const move = (moved: PointerEvent) => {
+      at = { x: moved.clientX, y: moved.clientY };
+      if (!queued) queued = requestAnimationFrame(apply);
+    };
+    const end = () => {
+      // The last move is applied rather than dropped: cancelling the frame would leave
+      // the divider a few pixels behind where it was let go.
+      if (queued) {
+        cancelAnimationFrame(queued);
+        apply();
+      }
       document.body.style.userSelect = "";
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", end);
+      handle.removeEventListener("pointercancel", end);
     };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-    return () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-    };
-  }, [columns, update]);
+
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+  };
 
   useEffect(() => {
     if (!unformattable) return;
@@ -345,11 +377,10 @@ export default function JsPlayground() {
         </div>
 
         <div
-          onMouseDown={() => {
-            dragging.current = true;
-            document.body.style.userSelect = "none";
-          }}
+          onPointerDown={startDrag}
           onDoubleClick={() => update({ split: 50 })}
+          // Or the browser scrolls the page instead of giving us the move.
+          style={{ touchAction: "none" }}
           className={`relative shrink-0 bg-[var(--jp-border)] ${
             columns ? "w-px cursor-col-resize" : "h-px cursor-row-resize"
           }`}

@@ -10,6 +10,15 @@ carries each pane's size with it, so the one you made tall stays tall. It opens 
 columns — source left, output right — in dark, and `use-settings.ts` remembers whatever
 you change it to.
 
+The divider takes a pointer rather than a mouse, which is what makes it draggable by
+touch and pen as well, and the listeners go on the handle for the length of the gesture
+rather than on the window for the length of the session — pointer capture is what keeps a
+one-pixel target receiving moves the cursor has already left behind. Moves are coalesced
+to one update a frame, and the write to storage waits for the gesture to settle: a
+two-second drag used to be a hundred and twenty `JSON.stringify` calls and a hundred and
+twenty synchronous writes, and is now one. That write is flushed if the tab is hidden or
+closed first, since neither event will wait for anything asynchronous.
+
 The left rail holds the two controls that act on the session as a whole:
 
 - **Play** — a toggle, not a trigger, and the glyph is what says which way it is set. A

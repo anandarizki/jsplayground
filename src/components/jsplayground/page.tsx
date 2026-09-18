@@ -11,33 +11,19 @@
  * above a pane, and nothing spans both — the rail keeps only what acts on neither.
  */
 
-import {
-  AArrowDown,
-  AArrowUp,
-  AlignLeft,
-  Bookmark,
-  BookmarkPlus,
-  CircleHelp,
-  Eraser,
-  Play,
-  Settings,
-  Square,
-} from "lucide-react";
+import { AArrowDown, AArrowUp, AlignLeft, CircleHelp, Eraser, Play, Settings, Square } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { AboutDialog } from "./about-dialog";
-import { BookmarksDialog } from "./bookmarks-dialog";
 import { ConsoleView } from "./console-view";
 import { DEFAULT_FONT_PX, GITHUB_URL, MAX_FONT_PX, MIN_FONT_PX } from "./constants";
 import { Editor } from "./editor";
 import { ErrorBoundary } from "./error-boundary";
 import { formatCode } from "./format";
 import { GithubMark } from "./github-mark";
-import { SaveBookmarkDialog } from "./save-bookmark-dialog";
 import { SettingsDialog } from "./settings-dialog";
 import { statusLabel, statusTone } from "./status";
 import { appTheme, codeTheme, cssVars } from "./themes";
-import { useBookmarks } from "./use-bookmarks";
 import { usePlayground } from "./use-playground";
 import { useSettings } from "./use-settings";
 
@@ -100,12 +86,11 @@ export default function JsPlayground() {
   const { settings, update } = useSettings();
   const { mode, orientation, outputFirst, split } = settings;
   const { code, setCode, dirty, runNow, runner } = usePlayground(mode, settings.timeout);
-  const { bookmarks, add, remove } = useBookmarks();
 
   const app = appTheme(settings.theme);
   const palette = codeTheme(settings.code);
   // Not a setting: nobody wants the dialog they closed to come back next visit.
-  const [dialog, setDialog] = useState<"bookmarks" | "save" | "settings" | "about" | null>(null);
+  const [dialog, setDialog] = useState<"settings" | "about" | null>(null);
   // Unformattable code is nearly always code that does not parse, and the output pane
   // says so in more detail the moment it runs. The status line only has to admit the
   // button did nothing, and then stop saying it.
@@ -270,14 +255,6 @@ export default function JsPlayground() {
           >
             <AlignLeft size={15} />
           </button>
-          <button
-            onClick={() => setDialog("save")}
-            aria-label="Save as bookmark"
-            title="Save as bookmark"
-            className={paneButton}
-          >
-            <BookmarkPlus size={15} />
-          </button>
         </div>
       </div>
     </section>
@@ -366,16 +343,6 @@ export default function JsPlayground() {
           </button>
         )}
 
-        <button
-          onClick={() => setDialog((open) => (open === "bookmarks" ? null : "bookmarks"))}
-          aria-label="Bookmarks"
-          aria-expanded={dialog === "bookmarks"}
-          title="Snippets to load"
-          className={`${rail} ${dialog === "bookmarks" ? railOn : ""}`}
-        >
-          <Bookmark size={15} />
-        </button>
-
         {/* Pushed to the foot of the rail: none of these touch the code. */}
         <div className="mt-auto flex flex-col items-center gap-1">
           <button
@@ -431,17 +398,6 @@ export default function JsPlayground() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">{second}</div>
       </div>
 
-      {dialog === "bookmarks" ? (
-        <BookmarksDialog
-          bookmarks={bookmarks}
-          onPick={setCode}
-          onRemove={remove}
-          onClose={closeDialog}
-        />
-      ) : null}
-      {dialog === "save" ? (
-        <SaveBookmarkDialog onSave={(title) => add(title, code)} onClose={closeDialog} />
-      ) : null}
       {dialog === "settings" ? (
         <SettingsDialog settings={settings} update={update} onSwap={swap} onClose={closeDialog} />
       ) : null}

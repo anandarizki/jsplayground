@@ -48,48 +48,5 @@ console.timeEnd("drying");
 console.log({ layers: { primer: 1, coats: { first: true } } });
 `;
 
-/** Snippets that each poke at one thing the runner has to survive. */
-export const EXAMPLES: { label: string; code: string }[] = [
-  {
-    label: "Values",
-    code: `console.log(1 / 3, 10n ** 20n, NaN, -0);
-console.log(new Set(["a", "b"]), /^ab+c$/gi, new Date(0));
-console.log([1, , 3], { nested: { deep: { deeper: { deepest: 1 } } } });
-
-const loop = { name: "loop" };
-loop.self = loop;
-console.log(loop);
-`,
-  },
-  {
-    label: "Async",
-    code: `console.log("1 — synchronous");
-
-setTimeout(() => console.log("4 — macrotask, 200ms later"), 200);
-Promise.resolve().then(() => console.log("3 — microtask"));
-
-console.log("2 — still synchronous");
-`,
-  },
-  {
-    label: "Throws",
-    code: `function parse(input) {
-  return JSON.parse(input);
-}
-
-console.log("about to throw");
-parse("{ not json }");
-console.log("never reached");
-`,
-  },
-  {
-    label: "Infinite loop",
-    code: `// The watchdog kills this. Nothing else can.
-let n = 0;
-while (true) n += 1;
-`,
-  },
-];
-
 /** Where the source lives. Shown in the rail and in the about dialog. */
 export const GITHUB_URL = "https://github.com/anandarizki/jsplayground";

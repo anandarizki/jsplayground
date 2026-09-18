@@ -56,14 +56,13 @@ two things at once: re-run on every keystroke, **and** survive code that never r
   drags with a mouse, a finger or a pen. Double-click resets it.
 - **Twelve code themes and six app themes**, paired so that going dark and back again
   returns the theme you started on. Each pane's text size steps independently.
-- **Bookmarks.** Save what is in the editor under a name; four worked examples ship with it.
 - **Format with Prettier**, fetched on the click rather than on load, so it costs nothing
   until you want it.
 - **Completion scoped to the sandbox** — it offers what the worker actually has, not
   `document` and `localStorage`, which are not there.
-- **Everything is remembered** — theme, layout, split, run mode, text sizes, timeout,
-  bookmarks — in `localStorage`, read before the first frame so there is no flash of the
-  wrong theme. Blocked storage costs you a preference, not the app.
+- **Everything is remembered** — theme, layout, split, run mode, text sizes, timeout — in
+  `localStorage`, read before the first frame so there is no flash of the wrong theme.
+  Blocked storage costs you a preference, not the app.
 
 | | |
 |---|---|

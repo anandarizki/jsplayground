@@ -5,10 +5,6 @@ type Props = {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** Whether the close button takes focus on open. Off for a dialog with a field in
-   *  it, which wants the caret instead — a child's effect cannot win this, since
-   *  children's effects run before the parent's. */
-  autoFocus?: boolean;
 };
 
 /**
@@ -18,7 +14,7 @@ type Props = {
  * the element carrying the theme's custom properties — a portalled dialog would land on
  * `document.body` and inherit none of them.
  */
-export function Dialog({ title, onClose, children, autoFocus = true }: Props) {
+export function Dialog({ title, onClose, children }: Props) {
   const close = useRef<HTMLButtonElement | null>(null);
   const titleId = useId();
   // Held in a ref so the effect below need not depend on it. Depending on it meant
@@ -32,13 +28,13 @@ export function Dialog({ title, onClose, children, autoFocus = true }: Props) {
   useEffect(() => {
     // Opened from a button the pointer is already on, so focus has to be moved by hand
     // for Escape and Tab to reach the dialog at all.
-    if (autoFocus) close.current?.focus();
+    close.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [autoFocus]);
+  }, []);
 
   return (
     <div

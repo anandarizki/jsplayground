@@ -19,7 +19,7 @@ two-second drag used to be a hundred and twenty `JSON.stringify` calls and a hun
 twenty synchronous writes, and is now one. That write is flushed if the tab is hidden or
 closed first, since neither event will wait for anything asynchronous.
 
-The left rail holds the two controls that act on the session as a whole:
+The left rail holds the one control that acts on the session as a whole:
 
 - **Play** — a toggle, not a trigger, and the glyph is what says which way it is set. A
   square means live: the code re-runs as you type, debounced, and pressing it stops that.
@@ -27,11 +27,6 @@ The left rail holds the two controls that act on the session as a whole:
   since the result you are looking at. `⌘↵` runs once either way. A run in flight takes
   the slot over — the same square in the error colour, which kills the worker rather than
   changing when the next run happens.
-- **Bookmark** — the shelf: what you saved, then the examples that shipped. The examples
-  used to sit as bare labels above the source, where they read as part of the
-  document rather than as a way out of it; a list also has room for each snippet's
-  opening line, which is the only thing that says what you are about to load over your
-  own code.
 
 Everything else belongs to one pane, and each pane carries a single line along its
 bottom: what it has to say on the left, what you can do to it on the right. Nothing sits
@@ -68,19 +63,18 @@ is seconds on a slow connection, so the line says `formatting…` while it is ha
 the button will not start a second one. Whatever is typed in the meantime wins — a result
 computed from the document as it was before is not allowed to overwrite the document as
 it is. Code that does not parse cannot be formatted, so that same line says
-`cannot format` for a moment and the output pane gives the real error on the next run. Save names what is in the editor and
-puts it at the top of the shelf.
+`cannot format` for a moment and the output pane gives the real error on the next run.
 
 The output line is the status — `ready`, `running…`, how long the last run took, or why
 it stopped — and holds the **eraser**. Both of those were a strip across the foot of the
 whole window, which put a run's duration as far from the output it measured as the
 layout allowed.
 
-Saved snippets live in `use-bookmarks.ts`, under their own versioned storage key and
-read in the state initialiser for the same reason the settings are. Nothing that comes
-back is trusted — an entry without both a title and a body is dropped rather than
-repaired into a blank row. The examples are not
-stored at all, so no amount of deleting can lose them.
+The editor holds one document, not a library of them. There is no saving, no shelf and no
+shipped examples: the starter snippet is what a visitor arrives to, and what they type
+over it is theirs to keep or lose. An earlier version did keep saved snippets, under
+`jsplayground:bookmarks:1`; that key is left alone rather than cleaned up, because an app
+has no business deleting what an earlier version of it was asked to remember.
 
 At the foot of the rail, away from anything that touches the code: **settings**, the
 source on **GitHub**, and **about**. Every dialog renders inside the app's root rather

@@ -151,7 +151,7 @@ export function ConsoleView({
     <Options value={{ colour, openByDefault }}>
       <div
         ref={scroller}
-        className={`overflow-auto bg-[var(--jp-code-bg)] font-mono text-[13px] leading-relaxed text-[var(--jp-code-text)] ${className ?? ""}`}
+        className={`overflow-auto font-mono text-[13px] leading-relaxed text-[var(--jp-code-text)] ${className ?? ""}`}
       >
         {entries.length === 0 ? (
           <p className="px-4 py-4 text-[var(--jp-faint)]">{hint}</p>

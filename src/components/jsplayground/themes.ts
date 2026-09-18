@@ -1,10 +1,11 @@
 /**
  * Two palettes, deliberately separate.
  *
- * An **app theme** paints the chrome: the rail, the pane headers, the footer, the
- * dialogs. A **code theme** paints the two panes — the editor's syntax and the console's
- * output both come from it, which is what keeps a string the same green whether you are
- * writing it or reading what it printed.
+ * An **app theme** paints every surface: the rail, the headers, the footer, the dialogs
+ * and the two panes alike, so the window reads as one thing. A **code theme** paints only
+ * what is written on them — the editor's syntax and the console's output both come from
+ * it, which is what keeps a string the same green whether you are writing it or reading
+ * what it printed.
  *
  * They are separate values but not free ones: only code themes of the app theme's own
  * brightness are offered, because a light code surface under dark chrome is legible and
@@ -161,9 +162,9 @@ export type CodeTheme = {
   id: string;
   name: string;
   dark: boolean;
-  /** The surface both panes sit on, so a code theme reads the same whatever chrome is
-   *  around it. */
-  bg: string;
+  /** No background of its own: the panes show the app theme's, so the two halves of the
+   *  window are one surface. That is also why the list is filtered by brightness — a
+   *  code theme has nothing to sit on but the chrome. */
   text: string;
   caret: string;
   selection: string;
@@ -187,7 +188,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "plain",
     name: "Plain",
     dark: false,
-    bg: "#ffffff",
     text: "#27272a",
     caret: "#2563eb",
     selection: "#bfdbfe",
@@ -208,7 +208,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "sepia",
     name: "Sepia",
     dark: false,
-    bg: "#fdf8ef",
     text: "#3a3327",
     caret: "#b45309",
     selection: "#f5e0b8",
@@ -229,7 +228,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "meadow",
     name: "Meadow",
     dark: false,
-    bg: "#f6fbf6",
     text: "#24302a",
     caret: "#059669",
     selection: "#bbf7d0",
@@ -250,7 +248,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "frost",
     name: "Frost",
     dark: false,
-    bg: "#f7fafd",
     text: "#1f2a37",
     caret: "#0284c7",
     selection: "#cfe6fb",
@@ -271,7 +268,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "mono",
     name: "Mono",
     dark: false,
-    bg: "#ffffff",
     text: "#1f1f1f",
     caret: "#1f1f1f",
     selection: "#e0e0e0",
@@ -292,7 +288,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "ink",
     name: "Ink",
     dark: true,
-    bg: "#09090b",
     text: "#e4e4e7",
     caret: "#60a5fa",
     selection: "#1e40af",
@@ -313,7 +308,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "ember",
     name: "Ember",
     dark: true,
-    bg: "#14100e",
     text: "#f0e6df",
     caret: "#fb923c",
     selection: "#7c2d12",
@@ -334,7 +328,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "orchid",
     name: "Orchid",
     dark: true,
-    bg: "#14101c",
     text: "#ece6f5",
     caret: "#c084fc",
     selection: "#4c1d95",
@@ -355,7 +348,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "neon",
     name: "Neon",
     dark: true,
-    bg: "#0a0f14",
     text: "#e6f6ff",
     caret: "#22d3ee",
     selection: "#0e7490",
@@ -376,7 +368,6 @@ export const CODE_THEMES: CodeTheme[] = [
     id: "contrast",
     name: "Contrast",
     dark: true,
-    bg: "#000000",
     text: "#ffffff",
     caret: "#ffff00",
     selection: "#0057b7",
@@ -445,7 +436,6 @@ export function cssVars(app: AppTheme, code: CodeTheme): Record<string, string> 
     "--jp-error": app.error,
     "--jp-error-bg": app.errorBg,
 
-    "--jp-code-bg": code.bg,
     "--jp-code-text": code.text,
     "--jp-code-keyword": code.keyword,
     "--jp-code-string": code.string,

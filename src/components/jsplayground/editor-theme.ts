@@ -16,6 +16,8 @@ import type { CodeTheme } from "./themes";
 function build(c: CodeTheme): Extension[] {
   const theme = EditorView.theme(
     {
+      // Transparent throughout: the pane shows the app theme's background, so the two
+      // halves of the window are one surface rather than two that nearly match.
       "&": { color: c.text, backgroundColor: "transparent", fontSize: "13px" },
       "&.cm-focused": { outline: "none" },
       ".cm-scroller": {
@@ -43,10 +45,12 @@ function build(c: CodeTheme): Extension[] {
         fontWeight: "600",
       },
       ".cm-tooltip": {
-        border: "none",
+        // The app theme's raised surface, read at use — the editor has no background of
+        // its own to match, and completion has to sit on something opaque.
+        border: "1px solid var(--jp-border)",
         borderRadius: "8px",
-        backgroundColor: c.dark ? "#27272a" : "#ffffff",
-        color: c.text,
+        backgroundColor: "var(--jp-panel)",
+        color: "var(--jp-text)",
         boxShadow: "0 8px 24px rgba(0,0,0,.14)",
       },
     },

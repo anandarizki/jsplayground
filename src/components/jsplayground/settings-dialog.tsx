@@ -201,7 +201,7 @@ export function SettingsDialog({ settings, update, onSwap, onClose }: Props) {
                 options={codeThemesFor(app.dark).map((t) => ({
                   id: t.id,
                   name: t.name,
-                  dots: [t.bg, t.keyword, t.string],
+                  dots: [t.keyword, t.string, t.number],
                 }))}
               />
             </Field>
@@ -260,10 +260,7 @@ export function SettingsDialog({ settings, update, onSwap, onClose }: Props) {
               value={settings.consoleColor}
               onChange={(next) => update({ consoleColor: next })}
             />
-            <div
-              style={{ backgroundColor: code.bg, borderColor: code.dark ? code.gutter : code.comment }}
-              className="rounded-lg border p-3 font-mono text-[12px]"
-            >
+            <div className="rounded-lg border border-[var(--jp-border)] bg-[var(--jp-bg)] p-3 font-mono text-[12px]">
               <span style={{ color: settings.consoleColor ? code.property : code.text }}>title</span>
               <span style={{ color: settings.consoleColor ? code.operator : code.text }}>: </span>
               <span style={{ color: settings.consoleColor ? code.string : code.text }}>'first coat'</span>

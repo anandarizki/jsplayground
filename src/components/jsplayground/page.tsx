@@ -81,7 +81,7 @@ export default function JsPlayground() {
           ))}
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden border-t border-[var(--jp-border)] bg-[var(--jp-code-bg)]">
+      <div className="min-h-0 flex-1 overflow-hidden border-t border-[var(--jp-border)]">
         <Editor value={code} onChange={setCode} onRun={runNow} code={palette} className="h-full" />
       </div>
     </section>

@@ -32,19 +32,22 @@ and has nowhere to say what the alternative is.
 
 `themes.ts` holds both, and they are deliberately separate.
 
-An **app theme** — Sunny, Calm, Paper, Night, Dusk, Forest — paints the chrome: the rail,
-the pane headers, the footer, the dialogs. A **code theme** — ten of them, Plain through
-Contrast — paints the two panes, and the editor's syntax and the console's output both
-come from it. That is what keeps a string the same green whether you are writing it or
-reading what it printed, and it is why the console's tones are named abstractly in the
-worker: the mapping to a colour cannot be made until the palette is known.
+An **app theme** — Sunny, Calm, Paper, Night, Dusk, Forest — paints every surface: the
+rail, the headers, the footer, the dialogs and both panes alike. A **code theme** — ten of
+them, Plain through Contrast — paints only what is written on them, and the editor's
+syntax and the console's output both come from it. That is what keeps a string the same
+green whether you are writing it or reading what it printed, and it is why the console's
+tones are named abstractly in the worker: the mapping to a colour cannot be made until
+the palette is known.
 
-The two are separate choices but not independent ones: the code list is filtered to the
-app theme's own brightness, because a light code surface under dark chrome is perfectly
-legible and still looks like a mistake. Switching the app between light and dark carries
-the code theme to the same slot in the other list rather than to a fixed default, so
-going dark and back again returns the theme you started on. `use-settings.ts` holds that
-invariant, not the dialog, so no caller can leave the two out of step.
+A code theme has no background of its own. Both panes are transparent, so the window is
+one surface rather than a cream frame around a white rectangle. That is also what makes
+the brightness filter load-bearing rather than tidy — a code theme has nothing to sit on
+but the chrome, so only themes of the app theme's own brightness are offered. Switching
+the app between light and dark carries the code theme to the same slot in the other list
+rather than to a fixed default, so going dark and back again returns the theme you
+started on. `use-settings.ts` holds that invariant, not the dialog, so no caller can
+leave the two out of step.
 
 Every colour in the app reads a `--jp-*` custom property set on the root element, which
 is the only reason a theme can be a value picked at runtime rather than a second set of

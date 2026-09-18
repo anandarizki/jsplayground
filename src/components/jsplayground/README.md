@@ -38,7 +38,11 @@ Every control is in the left rail, which is why the panes carry no chrome of the
   summary with a disclosure triangle, whatever its width — a value's controls should not
   depend on how wide it happens to print, and the summary is what you read either way.
   The exception is `{}` and `[]`, which stay as they are: a triangle that opens onto
-  nothing is a broken promise. The tree is serialised up front, because the worker is
+  nothing is a broken promise.
+- Open, a container drops the summary and shows only its brace, with the members on the
+  lines below and the closing brace under the key that opened it — the shape of the
+  source you would have written. Devtools keeps the summary on the header line, which
+  means every value you open is then on screen twice, once abbreviated and once not. The tree is serialised up front, because the worker is
   terminated once the run settles and there is nobody left to ask for the next level;
   `MAX_DEPTH`, `MAX_ITEMS` and `MAX_NODES` are what bound that. A level's members are a
   sibling of its summary rather than a continuation of it, which is what makes the indent

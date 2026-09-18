@@ -207,16 +207,27 @@ export function workerMain() {
     assemble(out, "Set(" + value.size + ") ", "{", "}", items, true, value.size - items.length);
   }
 
-  function objectTokens(value: any, out: any[], depth: number, seen: any[], kind: string) {
-    let prefix = "";
+  /** The dim word in front of a container: `Map(3) `, `Uint8Array(4) `, `Box `. Plain
+   *  objects have none, and plain arrays only get their `(n)` at the top of a node,
+   *  where the summary is truncated long before its end. */
+  function labelOf(value: any, kind: string, size: number) {
+    if (Array.isArray(value)) return size < 0 ? "" : "(" + size + ") ";
+    if (ArrayBuffer.isView(value) && kind !== "DataView") return kind + "(" + (value as any).length + ") ";
+    if (kind === "Map" || kind === "Set") return kind + "(" + value.size + ") ";
     try {
-      if (Object.getPrototypeOf(value) === null) prefix = "[null prototype] ";
-      else if (value.constructor && value.constructor.name && value.constructor.name !== "Object") {
-        prefix = value.constructor.name + " ";
-      } else if (kind !== "Object") prefix = kind + " ";
+      if (Object.getPrototypeOf(value) === null) return "[null prototype] ";
+      if (value.constructor && value.constructor.name && value.constructor.name !== "Object") {
+        return value.constructor.name + " ";
+      }
+      if (kind !== "Object") return kind + " ";
     } catch {
       /* exotic prototypes */
     }
+    return "";
+  }
+
+  function objectTokens(value: any, out: any[], depth: number, seen: any[], kind: string) {
+    const prefix = labelOf(value, kind, -1);
 
     let keys: string[] = [];
     try {
@@ -375,12 +386,21 @@ export function workerMain() {
     const size = count(value, kind);
     if (size === 0) return flat();
 
+    const label = labelOf(value, kind, size);
+    const square = Array.isArray(value) || (ArrayBuffer.isView(value) && kind !== "DataView");
+
     const preview: any[] = [];
     // Length first, because a shut array's summary is truncated long before its end and
     // "how many" is the thing you actually wanted. Map and Set already say their own.
-    if (Array.isArray(value)) push(preview, "dim", "(" + size + ") ");
+    if (Array.isArray(value)) push(preview, "dim", label);
     // One level only: members show as `{…}` in the summary, the way devtools does it.
     tokenize(value, preview, MAX_DEPTH - 1, seen);
+
+    // Open, a container shows its brace and nothing else: the members are on the lines
+    // below, and repeating them in the summary above would be saying it twice.
+    const head: any[] = [];
+    if (label) push(head, "dim", label);
+    push(head, "punct", square ? "[" : "{");
 
     nodes += Math.min(size, MAX_ITEMS);
     seen.push(value);
@@ -394,6 +414,8 @@ export function workerMain() {
     return {
       n: "c",
       preview: truncate(preview, PREVIEW_WIDTH),
+      head: head,
+      tail: [{ t: "punct", v: square ? "]" : "}" }],
       members: list,
       hidden: Math.max(0, size - list.length),
     };

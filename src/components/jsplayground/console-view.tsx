@@ -74,19 +74,26 @@ function Branch({ node, label }: { node: Extract<Printed, { n: "c" }>; label?: T
         />
         <span className="min-w-0 flex-1">
           {label ? <Tokens tokens={label} /> : null}
-          <Tokens tokens={node.preview} />
+          <Tokens tokens={open ? node.head : node.preview} />
         </span>
       </button>
 
       {open ? (
-        <span className={`mt-0.5 mb-1 block ${BRANCH}`}>
-          {node.members.map((member, i) => (
-            <MemberRow key={i} member={member} />
-          ))}
-          {node.hidden > 0 ? (
-            <span className={`block ${GUTTER} text-zinc-400 group-[.dark]:text-zinc-500`}>… {node.hidden} more</span>
-          ) : null}
-        </span>
+        <>
+          <span className={`block ${BRANCH}`}>
+            {node.members.map((member, i) => (
+              <MemberRow key={i} member={member} />
+            ))}
+            {node.hidden > 0 ? (
+              <span className="block text-zinc-400 group-[.dark]:text-zinc-500">… {node.hidden} more</span>
+            ) : null}
+          </span>
+          {/* Aligned with the key that opened the level, not with the brace itself —
+              the same place a closing brace goes in the source you are writing. */}
+          <span className={`block ${GUTTER}`}>
+            <Tokens tokens={node.tail} />
+          </span>
+        </>
       ) : null}
     </span>
   );

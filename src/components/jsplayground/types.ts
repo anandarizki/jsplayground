@@ -27,7 +27,18 @@ export type Token = { t: Tone; v: string };
  */
 export type Printed =
   | { n: "v"; tokens: Token[] }
-  | { n: "c"; preview: Token[]; members: Member[]; hidden: number };
+  | {
+      n: "c";
+      /** The whole value on one line, for when it is shut. */
+      preview: Token[];
+      /** What it shows instead when open: its label and opening brace, nothing more —
+       *  the members are the lines below, so the summary would only repeat them. */
+      head: Token[];
+      /** The closing brace, on its own line under the key that opened it. */
+      tail: Token[];
+      members: Member[];
+      hidden: number;
+    };
 
 /** A member of an open container. `key` carries its own `: ` or ` => `; Sets and arrays
  *  use the index, so every row reads the same way. */

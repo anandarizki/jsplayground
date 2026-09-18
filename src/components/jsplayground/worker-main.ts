@@ -19,12 +19,28 @@ export function workerMain() {
   const MAX_ITEMS = 100; // array/object/map members
   const PREVIEW_WIDTH = 96; // characters of a shut container's summary line
   const MAX_NODES = 4000; // members serialised per console call
+  // The two that bound a whole console call rather than any one level of it. Without
+  // them the per-level caps multiply: 100 items, four levels deep, is a million leaves
+  // and a 47 MB message — from one `console.log` of an ordinary-looking array.
+  const MAX_TOKENS = 3000; // token runs per console call
+  const MAX_CHARS = 100000; // characters of text per console call
+  const PREVIEW_TOKENS = 300; // token runs assembled for a line that will be cut anyway
+  // And the same again for a whole run, because `MAX_ENTRIES` lines at a full budget
+  // each is still a hundred megabytes for the main thread to hold in state.
+  const MAX_RUN_TOKENS = 100000;
+  const MAX_RUN_CHARS = 2000000;
 
   const scope: any = self;
   let sent = 0;
   let nodes = 0;
   let capped = false;
   let lineOffset = 0;
+  let tokensOut = 0;
+  let charsOut = 0;
+  let tokenCap = MAX_TOKENS;
+  let charCap = MAX_CHARS;
+  let runTokens = 0;
+  let runChars = 0;
 
   // Opaque to the bundler on purpose: writing `async function () {}` out here would
   // hand a downlevelling compiler something to rewrite.
@@ -35,21 +51,71 @@ export function workerMain() {
   }
 
   function emit(msg: any) {
-    if (msg.t === "log") {
-      if (capped) return;
-      sent += 1;
-      if (sent > MAX_ENTRIES) {
-        capped = true;
-        scope.postMessage({ t: "notice", text: "Output stopped after " + MAX_ENTRIES + " entries." });
-        return;
-      }
-    }
     scope.postMessage(msg);
+  }
+
+  /**
+   * Whether another console line will be sent at all.
+   *
+   * Asked before its arguments are serialised rather than after. The cap used to live
+   * inside `emit`, by which point the entry nobody would see had already been walked in
+   * full — a thousand lines of output cost a thousand lines of work to send four hundred.
+   */
+  function canEmitLog() {
+    if (capped) return false;
+    if (sent >= MAX_ENTRIES) {
+      capped = true;
+      scope.postMessage({ t: "notice", text: "Output stopped after " + MAX_ENTRIES + " entries." });
+      return false;
+    }
+    sent += 1;
+    return true;
+  }
+
+  // ------------------------------------------------------------------- budget
+
+  /**
+   * Whether the current console call has spent what it is allowed.
+   *
+   * Every loop that could keep going asks this and stops. What it skips is reported as
+   * `… N more` by the container it was filling, which is the same thing that container
+   * already says about `MAX_ITEMS` — so a value that ran out of budget reads like a value
+   * that was merely wide, rather than like a value that was cut off.
+   *
+   * The caps are variables rather than the constants themselves so `summary` can lower
+   * them for a line it is going to cut anyway.
+   */
+  function spent() {
+    return tokensOut >= tokenCap || charsOut >= charCap;
+  }
+
+  /**
+   * Per console call: each message starts again with the whole budget.
+   *
+   * Up to a point. A run that has already spent `MAX_RUN_TOKENS` keeps printing, but
+   * every line from then on gets only what a summary costs — nobody opens the three
+   * hundredth copy of a wide array, and the main thread has to hold all four hundred of
+   * them whether or not anybody does.
+   */
+  function resetBudget() {
+    runTokens += tokensOut;
+    runChars += charsOut;
+    nodes = 0;
+    tokensOut = 0;
+    charsOut = 0;
+    const roomy = runTokens < MAX_RUN_TOKENS && runChars < MAX_RUN_CHARS;
+    tokenCap = roomy ? MAX_TOKENS : PREVIEW_TOKENS;
+    charCap = roomy ? MAX_CHARS : PREVIEW_WIDTH * 4;
   }
 
   // ---------------------------------------------------------------- formatting
 
+  /** The one place a token is made, so it is also the one place the budget is spent.
+   *  There is no guard here: the callers stop, and letting the value in hand finish
+   *  overshoots by one nesting level rather than leaving a half-written brace. */
   function push(out: any[], t: string, v: string) {
+    tokensOut += 1;
+    charsOut += v.length;
     out.push({ t: t, v: v });
   }
 
@@ -89,6 +155,37 @@ export function workerMain() {
   }
 
   /**
+   * A value on one line, cut to `PREVIEW_WIDTH` — the summary a shut container shows,
+   * and what a container the tree refused to open prints as instead.
+   *
+   * Built under a budget of its own, because assembling a hundred 4000-character strings
+   * to then keep 96 characters of them is most of the work for none of the result. What
+   * survives the cut is what the call is charged for; the rest never existed as far as
+   * the budget is concerned.
+   */
+  function summary(prefix: string, value: any, depth: number, seen: any[]) {
+    const tokens0 = tokensOut;
+    const chars0 = charsOut;
+    const tokenCap0 = tokenCap;
+    const charCap0 = charCap;
+    tokenCap = Math.min(tokenCap0, tokens0 + PREVIEW_TOKENS);
+    charCap = Math.min(charCap0, chars0 + PREVIEW_WIDTH);
+    const out: any[] = [];
+    try {
+      if (prefix) push(out, "dim", prefix);
+      tokenize(value, out, depth, seen);
+    } finally {
+      tokenCap = tokenCap0;
+      charCap = charCap0;
+    }
+    const cut = truncate(out, PREVIEW_WIDTH);
+    tokensOut = tokens0 + cut.length;
+    charsOut = chars0;
+    for (let i = 0; i < cut.length; i++) charsOut += cut[i].v.length;
+    return cut;
+  }
+
+  /**
    * Lay a container's members out on one line. Everything that reads as a list —
    * arrays, objects, Maps, Sets, typed arrays — comes through here, so the rule is the
    * same wherever it applies.
@@ -116,6 +213,7 @@ export function workerMain() {
   }
 
   function tokenize(value: any, out: any[], depth: number, seen: any[]) {
+    if (spent()) return push(out, "dim", "…");
     const type = typeof value;
     if (value === null) return push(out, "nullish", "null");
     if (type === "undefined") return push(out, "nullish", "undefined");
@@ -169,19 +267,20 @@ export function workerMain() {
     const items: any[] = [];
     const shown = Math.min(length, MAX_ITEMS);
     for (let i = 0; i < shown; i++) {
+      if (spent()) break;
       const item: any[] = [];
       if (i in value) tokenize(value[i], item, depth + 1, seen);
       else push(item, "dim", "<empty>");
       items.push(item);
     }
-    assemble(out, label, "[", "]", items, false, length - shown);
+    assemble(out, label, "[", "]", items, false, length - items.length);
   }
 
   function pairTokens(value: any, out: any[], depth: number, seen: any[]) {
     const items: any[] = [];
     let i = 0;
     value.forEach(function (v: any, k: any) {
-      if (i < MAX_ITEMS) {
+      if (i < MAX_ITEMS && !spent()) {
         const item: any[] = [];
         tokenize(k, item, depth + 1, seen);
         push(item, "punct", " => ");
@@ -197,7 +296,7 @@ export function workerMain() {
     const items: any[] = [];
     let i = 0;
     value.forEach(function (v: any) {
-      if (i < MAX_ITEMS) {
+      if (i < MAX_ITEMS && !spent()) {
         const item: any[] = [];
         tokenize(v, item, depth + 1, seen);
         items.push(item);
@@ -238,6 +337,7 @@ export function workerMain() {
     const items: any[] = [];
     const shown = Math.min(keys.length, MAX_ITEMS);
     for (let i = 0; i < shown; i++) {
+      if (spent()) break;
       const item: any[] = [];
       push(item, "key", isIdent(keys[i]) ? keys[i] : quote(keys[i]));
       push(item, "punct", ": ");
@@ -253,7 +353,7 @@ export function workerMain() {
       else tokenize(d ? d.value : undefined, item, depth + 1, seen);
       items.push(item);
     }
-    assemble(out, prefix, "{", "}", items, true, keys.length - shown);
+    assemble(out, prefix, "{", "}", items, true, keys.length - items.length);
   }
 
   // ------------------------------------------------------------------ nodes
@@ -295,6 +395,7 @@ export function workerMain() {
       const list_ = value as any;
       const shown = Math.min(list_.length, MAX_ITEMS);
       for (let i = 0; i < shown; i++) {
+        if (spent()) break;
         if (Array.isArray(list_) && !(i in list_)) {
           list.push(member(indexKey(i), { n: "v", tokens: [{ t: "dim", v: "<empty>" }] }));
         } else {
@@ -307,7 +408,7 @@ export function workerMain() {
     if (kind === "Map") {
       let i = 0;
       value.forEach(function (v: any, k: any) {
-        if (i < MAX_ITEMS) {
+        if (i < MAX_ITEMS && !spent()) {
           const key: any[] = [];
           tokenize(k, key, MAX_DEPTH - 1, []);
           push(key, "punct", " => ");
@@ -321,7 +422,7 @@ export function workerMain() {
     if (kind === "Set") {
       let i = 0;
       value.forEach(function (v: any) {
-        if (i < MAX_ITEMS) list.push(member(indexKey(i), toNode(v, depth + 1, seen)));
+        if (i < MAX_ITEMS && !spent()) list.push(member(indexKey(i), toNode(v, depth + 1, seen)));
         i += 1;
       });
       return list;
@@ -335,6 +436,7 @@ export function workerMain() {
     }
     const shown = Math.min(keys.length, MAX_ITEMS);
     for (let i = 0; i < shown; i++) {
+      if (spent()) break;
       const key: any[] = [];
       push(key, "key", isIdent(keys[i]) ? keys[i] : quote(keys[i]));
       push(key, "punct", ": ");
@@ -379,22 +481,27 @@ export function workerMain() {
       return { n: "v", tokens: tokens };
     };
 
-    if (!opens(value, kind) || seen.indexOf(value) !== -1 || depth >= MAX_DEPTH || nodes >= MAX_NODES) {
-      return flat();
-    }
+    if (!opens(value, kind) || seen.indexOf(value) !== -1 || depth >= MAX_DEPTH) return flat();
 
     const size = count(value, kind);
     if (size === 0) return flat();
 
     const label = labelOf(value, kind, size);
     const square = Array.isArray(value) || (ArrayBuffer.isView(value) && kind !== "DataView");
-
-    const preview: any[] = [];
     // Length first, because a shut array's summary is truncated long before its end and
     // "how many" is the thing you actually wanted. Map and Set already say their own.
-    if (Array.isArray(value)) push(preview, "dim", label);
+    const prefix = Array.isArray(value) ? label : "";
+
+    // Out of budget, so this one does not open. It still prints — as the line it would
+    // have shown shut. Falling back to `tokenize` at the current depth, which is what
+    // this used to do, is how the cap was got round: a level that refused to open then
+    // wrote out every one of its members flat, which is the more expensive of the two.
+    if (nodes >= MAX_NODES || spent()) {
+      return { n: "v", tokens: summary(prefix, value, MAX_DEPTH - 1, seen) };
+    }
+
     // One level only: members show as `{…}` in the summary, the way devtools does it.
-    tokenize(value, preview, MAX_DEPTH - 1, seen);
+    const preview = summary(prefix, value, MAX_DEPTH - 1, seen);
 
     // Open, a container shows its brace and nothing else: the members are on the lines
     // below, and repeating them in the summary above would be saying it twice.
@@ -413,7 +520,7 @@ export function workerMain() {
 
     return {
       n: "c",
-      preview: truncate(preview, PREVIEW_WIDTH),
+      preview: preview,
       head: head,
       tail: [{ t: "punct", v: square ? "]" : "}" }],
       members: list,
@@ -422,13 +529,16 @@ export function workerMain() {
   }
 
   function argsToNodes(args: any): any[] {
-    nodes = 0;
+    resetBudget();
     const parts = [];
     for (let i = 0; i < args.length; i++) {
+      if (spent()) break;
       // A top-level string argument prints bare, the way a devtools console does.
       if (typeof args[i] === "string") {
         const s: string = args[i];
-        parts.push({ n: "v", tokens: [{ t: "plain", v: s.length > MAX_STRING ? s.slice(0, MAX_STRING) + "…" : s }] });
+        const tokens: any[] = [];
+        push(tokens, "plain", s.length > MAX_STRING ? s.slice(0, MAX_STRING) + "…" : s);
+        parts.push({ n: "v", tokens: tokens });
       } else {
         parts.push(toNode(args[i], 0, []));
       }
@@ -440,6 +550,7 @@ export function workerMain() {
 
   function logger(level: string) {
     return function (...args: any[]) {
+      if (!canEmitLog()) return;
       emit({ t: "log", level: level, parts: argsToNodes(args) });
     };
   }
@@ -462,12 +573,14 @@ export function workerMain() {
     clear: function () {},
     assert: function (condition: any, ...rest_: any[]) {
       if (condition) return;
+      if (!canEmitLog()) return;
       const rest = argsToNodes(rest_);
       emit({ t: "log", level: "error", parts: [{ n: "v", tokens: [{ t: "error", v: "Assertion failed" }] }].concat(rest) });
     },
     count: function (label: any) {
       const key = label === undefined ? "default" : String(label);
       counters[key] = (counters[key] || 0) + 1;
+      if (!canEmitLog()) return;
       emit({ t: "log", level: "log", parts: [{ n: "v", tokens: [{ t: "plain", v: key + ": " + counters[key] }] }] });
     },
     time: function (label: any) {
@@ -478,6 +591,7 @@ export function workerMain() {
       if (timers[key] === undefined) return;
       const ms = now() - timers[key];
       delete timers[key];
+      if (!canEmitLog()) return;
       emit({
         t: "log",
         level: "log",
@@ -522,6 +636,7 @@ export function workerMain() {
     if (err instanceof Error) {
       return { name: err.name || "Error", message: String(err.message), stack: err.stack };
     }
+    resetBudget();
     const out: any[] = [];
     tokenize(err, out, 0, []);
     return {

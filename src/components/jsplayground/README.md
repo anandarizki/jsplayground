@@ -139,8 +139,17 @@ painted before that, so it repeats `night`'s background by hand.
   lines below and the closing brace under the key that opened it — the shape of the
   source you would have written. Devtools keeps the summary on the header line, which
   means every value you open is then on screen twice, once abbreviated and once not. The tree is serialised up front, because the worker is
-  terminated once the run settles and there is nobody left to ask for the next level;
-  `MAX_DEPTH`, `MAX_ITEMS` and `MAX_NODES` are what bound that. A level's members are a
+  terminated once the run settles and there is nobody left to ask for the next level.
+  `MAX_DEPTH`, `MAX_ITEMS` and `MAX_NODES` bound any one level of that, and
+  `MAX_TOKENS`/`MAX_CHARS` bound the call as a whole — without which the per-level caps
+  simply multiply, and a hundred items four deep is a million leaves and a 47 MB message
+  from one `console.log` of an ordinary-looking array. A run has a budget too, because
+  four hundred entries at a full budget each is still more than the main thread should
+  be asked to hold; past it lines still print, as the line they would have shown shut.
+  Whatever a budget stops is reported as `… N more`, the same thing a level says when it
+  was merely too wide — running out of room should read like being wide, not like being
+  cut off. The caps are asked about before a line is serialised rather than after, so the
+  four hundred and first entry costs nothing to not send. A level's members are a
   sibling of its summary rather than a continuation of it, which is what makes the indent
   a fixed step instead of the width of the key that introduced it. Open state lives in
   the row that owns it, so a new run starts everything shut.

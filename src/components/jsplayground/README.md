@@ -42,10 +42,9 @@ Each line also carries its pane's text size, as two steps between 10 and 24 px w
 current size between them, bounded so a click that can do nothing is disabled rather than
 silently ignored. That number is the way back: pressing it returns the pane to 13 px, and
 at 13 px it has nothing to undo, so it stops being a button and reads as the label it
-already was. The two sizes
-are separate settings: reading a wide printed structure and writing the line that made it
-are not the same job, and a screen you have leaned back from may want only one of them
-bigger. The output is sized in `em` throughout, so everything in it scales together. The
+already was. The two sizes are separate settings: reading a wide printed structure and
+writing the line that made it are not the same job, and a screen you have leaned back
+from may want only one of them bigger. The output is sized in `em` throughout, so everything in it scales together. The
 editor's size goes through its CodeMirror theme rather than through the element around
 it: CodeMirror measures a line once and gives every gutter element that height, so text
 scaled underneath it by an inherited `font-size` leaves the numbers behind — a pixel a

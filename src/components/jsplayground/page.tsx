@@ -175,11 +175,16 @@ export default function JsPlayground() {
       handle.removeEventListener("pointermove", move);
       handle.removeEventListener("pointerup", end);
       handle.removeEventListener("pointercancel", end);
+      handle.removeEventListener("lostpointercapture", end);
     };
 
     handle.addEventListener("pointermove", move);
     handle.addEventListener("pointerup", end);
     handle.addEventListener("pointercancel", end);
+    // The backstop. Capture can be lost for reasons that produce neither of the two
+    // above — the window losing focus is the usual one — and a drag that is not told it
+    // has ended is a drag that never releases the text selection it disabled.
+    handle.addEventListener("lostpointercapture", end);
   };
 
   useEffect(() => {

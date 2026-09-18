@@ -173,8 +173,13 @@ export function workerMain() {
     const chars0 = charsOut;
     const tokenCap0 = tokenCap;
     const charCap0 = charCap;
-    tokenCap = Math.min(tokenCap0, tokens0 + PREVIEW_TOKENS);
-    charCap = Math.min(charCap0, chars0 + PREVIEW_WIDTH);
+    // Its own allowance rather than a share of what is left, so a container the tree
+    // refused to open — which is refused precisely because the budget is gone — still
+    // gets the one line it is being reduced to, rather than a bare `…`. It can afford to:
+    // every loop above stops on the next turn, so at most one value a level lands here,
+    // and only what survives the cut is charged for.
+    tokenCap = tokens0 + PREVIEW_TOKENS;
+    charCap = chars0 + PREVIEW_WIDTH;
     const out: any[] = [];
     try {
       if (prefix) push(out, "dim", prefix);

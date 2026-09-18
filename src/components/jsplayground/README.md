@@ -145,7 +145,11 @@ later. There is no gap to guard now, and a session that changes nothing writes n
   through `AsyncFunction`, so top-level `await` works.
 - `use-runner.ts` — one worker per run (globals cannot leak between runs, and the
   previous run is killed before the next starts), the watchdog, and a window for
-  late `setTimeout` output with a 15 s ceiling. The watchdog's limit is a setting,
+  late `setTimeout` output with a 15 s ceiling. The worker says once when its top-level
+  code hands control back, which is the only way the watchdog can tell an unbounded loop
+  from a slow await: by the time it fires there is nobody left in that thread to ask, and
+  the two deserve different sentences — one cannot be stopped from inside, and the other
+  did nothing wrong but take longer than the setting allows. The watchdog's limit is a setting,
   between 100 ms and 5 s. The ceiling is not: it is what stops a `setInterval` holding
   a thread open until the tab closes, which is not a preference.
 - `validate.ts` — the sandbox is not the only thing that can talk on the channel back

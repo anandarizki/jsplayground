@@ -76,6 +76,9 @@ export type Entry = LogEntry | ErrorEntry | NoticeEntry;
 /** Worker → main. */
 export type WorkerMessage =
   | { t: "log"; level: LogLevel; parts: Printed[] }
+  /** The top-level code has returned control — it either finished or reached an await.
+   *  What tells a timeout the difference between a loop and a slow wait. */
+  | { t: "yield" }
   | { t: "error"; name: string; message: string; line: number | null; column: number | null; phase: ErrorPhase }
   | { t: "notice"; text: string }
   | { t: "done"; ms: number };

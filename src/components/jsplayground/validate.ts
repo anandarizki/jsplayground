@@ -130,6 +130,8 @@ export function checkMessage(value: unknown): WorkerMessage | null {
       if (typeof msg.text !== "string") return null;
       return { t: "notice", text: clip(msg.text) };
     }
+    case "yield":
+      return { t: "yield" };
     case "done": {
       if (typeof msg.ms !== "number" || !Number.isFinite(msg.ms)) return null;
       return { t: "done", ms: msg.ms };

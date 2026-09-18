@@ -719,6 +719,11 @@ export function workerMain() {
         settle();
         return;
       }
+      // Returning from here means the synchronous part is over: the code either finished
+      // or reached an await. Either way it handed control back, which is the one thing a
+      // loop never does — and the only way the watchdog can tell the two apart, since by
+      // the time it fires there is nobody left in the thread to ask.
+      emit({ t: "yield" });
       Promise.resolve(result).then(settle, function (err: any) {
         fail(err, "runtime");
         settle();

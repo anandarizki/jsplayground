@@ -43,6 +43,7 @@ export function useRunner(timeout: number): Runner {
   const idle = useRef<number | null>(null);
   const ceiling = useRef<number | null>(null);
   const settled = useRef(false);
+  const yielded = useRef(false);
   const refused = useRef(false);
   const seq = useRef(0);
 
@@ -84,6 +85,7 @@ export function useRunner(timeout: number): Runner {
       setStatus("running");
       setGeneration((n) => n + 1);
       settled.current = false;
+      yielded.current = false;
       refused.current = false;
 
       if (!blobUrl.current) {
@@ -135,6 +137,9 @@ export function useRunner(timeout: number): Runner {
           case "notice":
             append({ kind: "notice", id: id(), text: msg.text });
             break;
+          case "yield":
+            yielded.current = true;
+            break;
           case "done":
             settled.current = true;
             stopTimer(watchdog);
@@ -166,10 +171,18 @@ export function useRunner(timeout: number): Runner {
           kind: "error",
           id: id(),
           name: "Timeout",
-          message:
-            "Stopped after " +
-            timeout +
-            " ms. The code never handed control back — an unbounded loop can only be killed from outside.",
+          // Two different things end up here and they deserve different sentences. Code
+          // that never yielded cannot be stopped from inside, and saying so is the whole
+          // explanation. Code that was awaiting handed control back exactly as it should
+          // have and was simply not finished — telling that person about unbounded loops
+          // is telling them about somebody else's bug.
+          message: yielded.current
+            ? "Stopped after " +
+              timeout +
+              " ms: the top-level code was still awaiting. Raise the timeout in Settings → Running."
+            : "Stopped after " +
+              timeout +
+              " ms. The code never handed control back — an unbounded loop can only be killed from outside.",
           line: null,
           column: null,
           phase: "timeout",

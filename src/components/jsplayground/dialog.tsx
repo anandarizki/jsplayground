@@ -21,17 +21,24 @@ type Props = {
 export function Dialog({ title, onClose, children, autoFocus = true }: Props) {
   const close = useRef<HTMLButtonElement | null>(null);
   const titleId = useId();
+  // Held in a ref so the effect below need not depend on it. Depending on it meant
+  // re-running whenever the caller handed over a new function, and the effect's first act
+  // is to move focus: choosing a theme re-rendered the page, which re-ran this, which put
+  // focus back on Close — so every option chosen cost a keyboard user their place, and
+  // the Escape listener was torn down and rebuilt each time for good measure.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     // Opened from a button the pointer is already on, so focus has to be moved by hand
     // for Escape and Tab to reach the dialog at all.
     if (autoFocus) close.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [autoFocus, onClose]);
+  }, [autoFocus]);
 
   return (
     <div

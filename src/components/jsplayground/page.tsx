@@ -23,7 +23,7 @@ import {
   Settings,
   Square,
 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { AboutDialog } from "./about-dialog";
 import { BookmarksDialog } from "./bookmarks-dialog";
@@ -110,6 +110,10 @@ export default function JsPlayground() {
   // says so in more detail the moment it runs. The status line only has to admit the
   // button did nothing, and then stop saying it.
   const [unformattable, setUnformattable] = useState(false);
+
+  // Stable, because `Dialog` holds it across renders and an inline lambda would be a new
+  // one every time the page redraws.
+  const closeDialog = useCallback(() => setDialog(null), []);
 
   const frame = useRef<HTMLDivElement | null>(null);
   const columns = orientation === "columns";
@@ -396,16 +400,16 @@ export default function JsPlayground() {
           bookmarks={bookmarks}
           onPick={setCode}
           onRemove={remove}
-          onClose={() => setDialog(null)}
+          onClose={closeDialog}
         />
       ) : null}
       {dialog === "save" ? (
-        <SaveBookmarkDialog onSave={(title) => add(title, code)} onClose={() => setDialog(null)} />
+        <SaveBookmarkDialog onSave={(title) => add(title, code)} onClose={closeDialog} />
       ) : null}
       {dialog === "settings" ? (
-        <SettingsDialog settings={settings} update={update} onSwap={swap} onClose={() => setDialog(null)} />
+        <SettingsDialog settings={settings} update={update} onSwap={swap} onClose={closeDialog} />
       ) : null}
-      {dialog === "about" ? <AboutDialog timeout={settings.timeout} onClose={() => setDialog(null)} /> : null}
+      {dialog === "about" ? <AboutDialog timeout={settings.timeout} onClose={closeDialog} /> : null}
     </div>
   );
 }

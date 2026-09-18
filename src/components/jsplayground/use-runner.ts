@@ -100,6 +100,10 @@ export function useRunner(timeout: number): Runner {
       };
 
       w.onmessage = (event: MessageEvent) => {
+        // A message already in flight when `kill()` ran belongs to a run that is over,
+        // and everything below it — the entries, the status, the settled flag — belongs
+        // to the run that replaced it.
+        if (worker.current !== w) return;
         // The sandbox is not the only thing that can post on this channel: the code it
         // is running holds the same `postMessage`. So the message is checked rather than
         // destructured, and one that is not a message this console can draw is dropped —
@@ -142,6 +146,7 @@ export function useRunner(timeout: number): Runner {
       };
 
       w.onerror = () => {
+        if (worker.current !== w) return;
         kill();
         append({
           kind: "error",

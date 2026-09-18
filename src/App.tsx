@@ -1,4 +1,4 @@
-import { JsPlayground } from './components/js-playground'
+import JsPlayground from './components/jsplayground'
 
 function App() {
   return <JsPlayground />

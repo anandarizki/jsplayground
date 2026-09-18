@@ -10,19 +10,24 @@ carries each pane's size with it, so the one you made tall stays tall. It opens 
 columns — source left, output right — in dark, and `use-settings.ts` remembers whatever
 you change it to.
 
-Every control is in the left rail, which is why the panes carry no chrome of their own:
+The left rail holds the two controls you reach for while writing, which is why the panes
+carry no chrome of their own:
 
 - **Play** — a toggle, not a trigger. Lit means live: the code re-runs as you type,
   debounced. Unlit means the result is frozen, and an amber dot on the button says the
   code has moved on since the result you are looking at. `⌘↵` runs once either way.
 - **Eraser** — clear the output.
-- **Layout / Swap** — rows or columns, and which pane leads.
-- **Sun / Moon** — light or dark. The editor and the console share one palette, so a
-  string is the same green whether you are writing it or reading what it printed. The
-  system preference gets no vote: dark is this app's own default.
-- **Mark / Question** — the source on GitHub, and what the app is. Both sit at the foot
-  of the rail, away from the controls that touch the code. The dialog renders inside the
-  app's root rather than in a portal, so the `group` carrying `dark` is still above it.
+
+At the foot of the rail, away from anything that touches the code: **settings**, the
+source on **GitHub**, and **about**. Both dialogs render inside the app's root rather
+than in a portal, so the `group` carrying `dark` is still above them.
+
+Settings is where theme, layout, which pane leads, when it runs and evening up the panes
+now live. Three of those were bare icons in the rail, where a toggle's state was legible
+only as a glyph and there was nowhere to say what it did — a rail is a good place for a
+verb and a poor one for a preference. The editor and the console share one palette, so a
+string is the same green whether you are writing it or reading what it printed, and the
+system preference gets no vote on which palette: dark is this app's own default.
 
 ## How it runs your code
 

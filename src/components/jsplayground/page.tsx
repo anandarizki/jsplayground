@@ -7,7 +7,7 @@
  * panes themselves stay free of chrome.
  */
 
-import { ArrowLeftRight, ArrowUpDown, CircleHelp, Columns2, Eraser, Moon, Play, Rows2, Square, Sun } from "lucide-react";
+import { CircleHelp, Eraser, Play, Settings, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AboutDialog } from "./about-dialog";
@@ -15,6 +15,7 @@ import { ConsoleView } from "./console-view";
 import { EXAMPLES, GITHUB_URL } from "./constants";
 import { Editor } from "./editor";
 import { GithubMark } from "./github-mark";
+import { SettingsDialog } from "./settings-dialog";
 import { statusLabel, statusTone } from "./status";
 import { usePlayground } from "./use-playground";
 import { useSettings } from "./use-settings";
@@ -24,7 +25,7 @@ export default function JsPlayground() {
   const { dark, mode, orientation, outputFirst, split } = settings;
   const { code, setCode, dirty, runNow, runner } = usePlayground(mode, ready);
   // Not a setting: nobody wants the dialog they closed to come back next visit.
-  const [about, setAbout] = useState(false);
+  const [dialog, setDialog] = useState<"settings" | "about" | null>(null);
 
   const frame = useRef<HTMLDivElement | null>(null);
   const dragging = useRef(false);
@@ -135,37 +136,18 @@ export default function JsPlayground() {
           <Eraser size={15} />
         </button>
 
-        <span className="my-2 h-px w-6 bg-zinc-200 group-[.dark]:bg-zinc-800" />
-
-        <button
-          onClick={() => update({ orientation: columns ? "rows" : "columns" })}
-          aria-label="Toggle layout"
-          title={columns ? "Side by side — click to stack" : "Stacked — click for side by side"}
-          className={rail}
-        >
-          {columns ? <Columns2 size={15} /> : <Rows2 size={15} />}
-        </button>
-
-        <button
-          onClick={swap}
-          aria-label="Swap panes"
-          title={outputFirst ? "Output first — click to put source first" : "Source first — click to put output first"}
-          className={rail}
-        >
-          {columns ? <ArrowLeftRight size={15} /> : <ArrowUpDown size={15} />}
-        </button>
-
-        <button
-          onClick={() => update({ dark: !dark })}
-          aria-label={dark ? "Switch to light" : "Switch to dark"}
-          title={dark ? "Dark — click for light" : "Light — click for dark"}
-          className={rail}
-        >
-          {dark ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
-
-        {/* Pushed to the foot of the rail: neither one touches the code. */}
+        {/* Pushed to the foot of the rail: none of these touch the code. */}
         <div className="mt-auto flex flex-col items-center gap-1">
+          <button
+            onClick={() => setDialog((open) => (open === "settings" ? null : "settings"))}
+            aria-label="Settings"
+            aria-expanded={dialog === "settings"}
+            title="Layout, theme and when it runs"
+            className={`${rail} ${dialog === "settings" ? "bg-zinc-200 text-zinc-900 group-[.dark]:bg-zinc-800 group-[.dark]:text-zinc-100" : ""}`}
+          >
+            <Settings size={15} />
+          </button>
+
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -178,11 +160,11 @@ export default function JsPlayground() {
           </a>
 
           <button
-            onClick={() => setAbout((open) => !open)}
+            onClick={() => setDialog((open) => (open === "about" ? null : "about"))}
             aria-label="About this app"
-            aria-expanded={about}
+            aria-expanded={dialog === "about"}
             title="About this app"
-            className={`${rail} ${about ? "bg-zinc-200 text-zinc-900 group-[.dark]:bg-zinc-800 group-[.dark]:text-zinc-100" : ""}`}
+            className={`${rail} ${dialog === "about" ? "bg-zinc-200 text-zinc-900 group-[.dark]:bg-zinc-800 group-[.dark]:text-zinc-100" : ""}`}
           >
             <CircleHelp size={15} />
           </button>
@@ -218,7 +200,10 @@ export default function JsPlayground() {
         </footer>
       </div>
 
-      {about ? <AboutDialog onClose={() => setAbout(false)} /> : null}
+      {dialog === "settings" ? (
+        <SettingsDialog settings={settings} update={update} onSwap={swap} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog === "about" ? <AboutDialog onClose={() => setDialog(null)} /> : null}
     </div>
   );
 }
